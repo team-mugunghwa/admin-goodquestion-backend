@@ -97,7 +97,7 @@ create index if not exists idx_admin_audit_logs_admin_id on admin_audit_logs(adm
 -- ============================================================
 
 -- ------------------------------------------------------------
--- 4. notices - 공지사항
+-- notices - 공지사항
 --    관리자가 쓰고 사용자 앱이 읽는다. PUBLISHED만 사용자에게 나간다.
 -- ------------------------------------------------------------
 create table if not exists notices (
@@ -125,7 +125,7 @@ create table if not exists notices (
 create index if not exists idx_notices_published on notices(status, pinned desc, published_at desc);
 
 -- ------------------------------------------------------------
--- 5. guides - 이용안내
+-- guides - 이용안내
 --    "이야기 시작하기", "별가루란?" 같은 도움말 문서. 카테고리 안에서
 --    관리자가 정한 순서대로 노출되므로 display_order가 정렬의 원본이다.
 -- ------------------------------------------------------------
@@ -145,7 +145,7 @@ create table if not exists guides (
 create index if not exists idx_guides_published on guides(status, category, display_order);
 
 -- ------------------------------------------------------------
--- 6. inquiries - 고객센터 문의
+-- inquiries - 고객센터 문의
 --    사용자 앱이 쓰고 관리자가 읽는다. 답변은 inquiry_answers에 따로 둔다.
 --
 --    parent_id는 on delete cascade다. 탈퇴한 보호자의 문의를 남겨 두면
@@ -172,7 +172,7 @@ create index if not exists idx_inquiries_parent_id on inquiries(parent_id, creat
 create index if not exists idx_inquiries_status on inquiries(status, created_at);
 
 -- ------------------------------------------------------------
--- 7. inquiry_answers - 문의 답변
+-- inquiry_answers - 문의 답변
 --    문의당 한 건으로 제한한다(unique). 여러 건을 허용하면 사용자 화면이
 --    "어느 것이 최종 답변인가"를 판단해야 하고, 수정과 추가답변이 구분되지 않는다.
 --    내용을 고치는 것은 같은 행의 update다.
@@ -180,7 +180,10 @@ create index if not exists idx_inquiries_status on inquiries(status, created_at)
 create table if not exists inquiry_answers (
     id           uuid        primary key default gen_random_uuid(),
     inquiry_id   uuid        not null unique references inquiries(id) on delete cascade,
-    admin_id     uuid        references admin_accounts(id) on delete set null,
+    -- admin_accounts를 참조하지 않는다. 이 테이블은 서비스 백엔드도 만들 수 있는데
+    -- 그쪽에는 admin_accounts가 없다. 외래키를 걸면 어느 쪽이 먼저 기동하느냐에 따라
+    -- 제약이 있기도 하고 없기도 한 스키마가 된다. 누가 답했는지는 admin_name에 남는다.
+    admin_id     uuid,
     admin_name   varchar(50) not null,
     content      text        not null,
     created_at   timestamptz not null default now(),
@@ -188,7 +191,7 @@ create table if not exists inquiry_answers (
 );
 
 -- ------------------------------------------------------------
--- 8. notifications - 사용자 알림함
+-- notifications - 사용자 알림함
 --    푸시는 기기가 꺼져 있거나 권한이 없으면 도착하지 않는다. 앱 안에서
 --    다시 볼 수 있어야 "답변이 등록되면 사용자가 확인할 수 있다"가 성립하므로
 --    푸시와 별개로 알림을 여기 쌓는다. 푸시는 이 행을 알리는 수단일 뿐이다.
@@ -210,7 +213,7 @@ create table if not exists notifications (
 create index if not exists idx_notifications_parent on notifications(parent_id, created_at desc);
 
 -- ------------------------------------------------------------
--- 9. device_tokens - 푸시 기기 토큰 (FCM 등록 토큰)
+-- device_tokens - 푸시 기기 토큰 (FCM 등록 토큰)
 --    토큰은 앱 재설치/복원으로 다른 보호자에게 재발급될 수 있어 token이 유일키다.
 --    같은 토큰이 다시 들어오면 소유자를 갱신한다(upsert).
 -- ------------------------------------------------------------
@@ -230,7 +233,7 @@ create table if not exists device_tokens (
 create index if not exists idx_device_tokens_parent on device_tokens(parent_id) where disabled_at is null;
 
 -- ------------------------------------------------------------
--- 10. daily_visits - 일자별 방문 기록
+-- daily_visits - 일자별 방문 기록
 --     대시보드의 "오늘 방문자"는 로그인 수가 아니라 순 방문자 수다.
 --     (보호자, 날짜)를 유일키로 두면 하루에 몇 번을 들어와도 1로 집계된다.
 --     방문 이벤트를 그대로 쌓으면 집계 때마다 distinct가 필요하고 행이 급격히 는다.
@@ -248,7 +251,7 @@ create table if not exists daily_visits (
 create index if not exists idx_daily_visits_date on daily_visits(visit_date);
 
 -- ------------------------------------------------------------
--- 11. stories 확장 - 관리자 편집 시각
+-- stories 확장 - 관리자 편집 시각
 --     기존 stories에는 created_at만 있어 "언제 고쳤는가"를 보여줄 수 없다.
 --     서비스 백엔드의 Story 엔티티는 이 컬럼을 매핑하지 않지만
 --     ddl-auto=validate는 매핑되지 않은 여분 컬럼을 문제 삼지 않는다.
