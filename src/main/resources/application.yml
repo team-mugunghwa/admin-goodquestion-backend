@@ -1,0 +1,86 @@
+server:
+  # 서비스 백엔드가 8080을 쓰므로 로컬에서 함께 띄울 수 있도록 8081로 둔다.
+  port: ${PORT:8081}
+  shutdown: graceful
+
+spring:
+  application:
+    name: admin-goodquestion-backend
+
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+  threads:
+    virtual:
+      enabled: true
+
+  datasource:
+    # 서비스 백엔드와 같은 DB를 본다. 관리자가 고친 이야기/공지/이용안내가 그대로
+    # 프로덕션 앱에 보여야 하므로 복제나 동기화 없이 한 DB를 공유한다.
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    hikari:
+      # 관리자 트래픽은 사용자 트래픽에 비해 훨씬 적다. 같은 DB를 공유하므로
+      # 관리자 쪽이 커넥션을 많이 쥐면 서비스 응답이 느려진다 - 작게 잡는다.
+      maximum-pool-size: ${DB_POOL_SIZE:5}
+      connection-timeout: 3000
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    # 서비스 백엔드의 flyway_schema_history와 섞이면 서로의 마이그레이션을
+    # "적용되지 않은 것"으로 보고 다시 돌리려 든다. 이력 테이블을 분리한다.
+    table: flyway_schema_history_admin
+    # 이미 서비스 테이블이 있는 DB에 이력 테이블만 새로 만드는 상황이라 필요하다.
+    baseline-on-migrate: true
+    # 기본값 1로 두면 V1을 "이미 적용된 것"으로 표시하고 건너뛴다. 0이어야 V1이 실행된다.
+    baseline-version: 0
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate.default_batch_fetch_size: 100
+
+# 관리자 콘솔(Flutter Web)의 오리진. 콤마로 구분한다.
+cors:
+  allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:*,http://127.0.0.1:*,https://admin-goodquestion-frontend.vercel.app,https://admin-goodquestion-frontend-*-team-mugunghwa.vercel.app}
+
+admin:
+  jwt:
+    # 서비스 토큰과 절대 같은 키를 쓰지 않는다. 키가 같으면 보호자 토큰으로
+    # 관리자 API를 부를 수 있게 된다.
+    secret: ${ADMIN_JWT_SECRET}
+    # 관리자 화면은 개인정보를 다루므로 액세스 토큰을 짧게 둔다(30분).
+    expiration-ms: ${ADMIN_JWT_EXPIRATION_MS:1800000}
+    refresh-expiration-ms: ${ADMIN_JWT_REFRESH_EXPIRATION_MS:43200000}   # 12시간
+  security:
+    # 로그인 실패 잠금. 서비스 계정보다 엄격하게 둔다.
+    max-login-attempts: ${ADMIN_MAX_LOGIN_ATTEMPTS:5}
+    lock-duration: ${ADMIN_LOCK_DURATION:15m}
+
+push:
+  fcm:
+    # 서비스 계정 JSON 경로(또는 JSON 원문). 비우면 발송기가 로그만 남기는 구현으로
+    # 대체된다 - 로컬과 CI에서 Firebase 자격증명 없이도 앱이 뜨고 테스트가 돈다.
+    credentials: ${FCM_CREDENTIALS:}
+    project-id: ${FCM_PROJECT_ID:}
+    connect-timeout-ms: ${FCM_CONNECT_TIMEOUT_MS:3000}
+    response-timeout-ms: ${FCM_RESPONSE_TIMEOUT_MS:5000}
+
+app:
+  # 알림을 눌렀을 때 사용자가 도착할 프로덕션 서비스 주소.
+  service-base-url: ${SERVICE_BASE_URL:http://localhost:7357}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
