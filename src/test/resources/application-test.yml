@@ -1,0 +1,33 @@
+# 테스트 전용 설정. src/main의 application.yml 위에 덮어쓴다.
+#
+# 목적은 하나다 - 환경변수 없이도 테스트가 뜨게 한다. main의 application.yml은
+# ${DB_URL}처럼 기본값 없는 플레이스홀더를 쓴다(운영에서 설정 누락을 조용히 넘기지
+# 않으려는 의도). 그쪽은 그대로 두고 테스트에서만 값을 덮는다.
+spring:
+  datasource:
+    # 실제 접속 정보는 PostgresContainerConfig의 @ServiceConnection이 주입한다.
+    # 여기 값은 플레이스홀더 미해석 오류를 막는 자리 채우기이고 쓰이지 않는다.
+    url: jdbc:postgresql://testcontainers/unused
+    username: unused
+    password: unused
+
+  flyway:
+    # db/baseline이 서비스 백엔드의 스키마(V0_1~V0_8)를 먼저 만들고, 그 위에
+    # db/migration의 관리자 마이그레이션(V1)이 얹힌다. 버전 순서상 0.x가 먼저다.
+    locations: classpath:db/baseline,classpath:db/migration
+    # 빈 컨테이너에서 시작하므로 베이스라인이 필요 없다. 운영에서만 켠다.
+    baseline-on-migrate: false
+
+admin:
+  jwt:
+    # 테스트 고정 키. HS256이라 32바이트 이상이어야 한다. 운영 키와 무관하다.
+    secret: admin-goodquestion-test-only-secret-key-32bytes-or-longer
+    expiration-ms: 1800000
+    refresh-expiration-ms: 43200000
+
+# FCM 자격증명을 비워 두면 발송기가 로그만 남기는 구현으로 대체된다.
+# 테스트가 실제 푸시를 보내지 않게 하는 것이 목적이고, 그 분기 자체도 테스트 대상이다.
+push:
+  fcm:
+    credentials: ""
+    project-id: ""
