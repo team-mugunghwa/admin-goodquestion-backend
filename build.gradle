@@ -1,0 +1,106 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '4.1.0'
+    id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'com.mugunghwa'
+version = '0.0.1-SNAPSHOT'
+description = 'admin-goodquestion-backend'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+    // FCM 발송에만 쓴다. 서비스 백엔드와 같은 이유로 WebClient를 쓴다 - 외부 호출을
+    // 트랜잭션 밖에서 타임아웃과 함께 다룰 수 있어야 한다.
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
+
+    // DB 마이그레이션. 서비스 백엔드와 같은 DB를 보되 이력 테이블을 따로 쓴다
+    // (application.yml의 flyway.table). 자세한 이유는 docs/admin-backend-guide.md 3절.
+    implementation 'org.springframework.boot:spring-boot-flyway'
+    runtimeOnly 'org.flywaydb:flyway-database-postgresql'
+
+    implementation 'io.github.cdimascio:dotenv-java:3.2.0'
+
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.7'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.7'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.7'
+
+    // FCM HTTP v1은 서비스 계정으로 서명한 OAuth2 액세스 토큰을 요구한다.
+    // firebase-admin 전체를 끌어오면 gRPC/Guava까지 딸려 오는데, 우리가 쓰는 것은
+    // 토큰 발급 하나뿐이라 인증 라이브러리만 넣고 전송은 WebClient로 한다.
+    implementation 'com.google.auth:google-auth-library-oauth2-http:1.30.0'
+
+    compileOnly 'org.projectlombok:lombok'
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    runtimeOnly 'org.postgresql:postgresql'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+
+    // 마이그레이션이 jsonb/timestamptz/gen_random_uuid()를 쓰므로 인메모리 DB로 대체할 수
+    // 없다. ddl-auto=validate라 Flyway가 실제 스키마를 만들어야 컨텍스트가 뜬다.
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+    testImplementation 'org.testcontainers:testcontainers-postgresql'
+    testCompileOnly 'org.projectlombok:lombok'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testAnnotationProcessor 'org.projectlombok:lombok'
+}
+
+/**
+ * .env를 key=value 맵으로 읽는다. dotenv-java는 런타임 의존성이라 빌드 스크립트에서 못 쓴다.
+ */
+def readDotenv = { File file ->
+    def values = [:]
+    file.eachLine('UTF-8') { line ->
+        def trimmed = line.trim()
+        if (trimmed.isEmpty() || trimmed.startsWith('#')) return
+        def sep = trimmed.indexOf('=')
+        if (sep <= 0) return
+        def value = trimmed.substring(sep + 1).trim()
+        if (value.length() >= 2 && (value.startsWith('"') && value.endsWith('"')
+                || value.startsWith("'") && value.endsWith("'"))) {
+            value = value.substring(1, value.length() - 1)
+        }
+        values[trimmed.substring(0, sep).trim()] = value
+    }
+    return values
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+
+    // 기본은 Testcontainers다. Docker 없이 이미 설치해 둔 PostgreSQL로 돌리려면
+    // ./gradlew test -PlocalDb 로 실행한다. 접속 정보는 bootRun과 같은 .env에서 읽는다.
+    if (project.hasProperty('localDb')) {
+        def envFile = rootProject.file('.env')
+        if (!envFile.exists()) {
+            throw new GradleException('-PlocalDb를 쓰려면 .env가 있어야 한다. .env.example을 복사해 값을 채운다.')
+        }
+        def env = readDotenv(envFile)
+        if (!env['DB_URL']) {
+            throw new GradleException('.env에 DB_URL이 없다. -PlocalDb는 접속할 DB를 스스로 준비해야 한다.')
+        }
+        systemProperty 'test.datasource.mode', 'local'
+        systemProperty 'spring.datasource.url', env['DB_URL']
+        systemProperty 'spring.datasource.username', env['DB_USERNAME'] ?: ''
+        systemProperty 'spring.datasource.password', env['DB_PASSWORD'] ?: ''
+        doFirst { logger.lifecycle("테스트가 로컬 DB를 사용한다: ${env['DB_URL']}") }
+    }
+}
