@@ -23,6 +23,6 @@ import java.lang.annotation.Target;
 @Inherited
 @SpringBootTest
 @ActiveProfiles("test")
-@Import({PostgresContainerConfig.class, AdminFixture.class})
+@Import({PostgresContainerConfig.class, TestFixture.class})
 public @interface IntegrationTest {
 }
