@@ -58,6 +58,25 @@ public class TestFixture {
         return id;
     }
 
+    public UUID createChild(UUID parentId, String name) {
+        UUID id = UUID.randomUUID();
+        jdbcTemplate.update("""
+                insert into children (id, parent_id, name, birth_year)
+                values (?, ?, ?, 2017)
+                """, id, parentId, name);
+        return id;
+    }
+
+    /** 이야기를 삭제할 수 없는 상태(진행 기록 있음)를 만드는 데 쓴다. */
+    public UUID createStorySession(UUID childId, UUID storyId) {
+        UUID id = UUID.randomUUID();
+        jdbcTemplate.update("""
+                insert into story_sessions (id, child_id, story_id, status)
+                values (?, ?, ?, 'IN_PROGRESS')
+                """, id, childId, storyId);
+        return id;
+    }
+
     public UUID createDeviceToken(UUID parentId, String token) {
         UUID id = UUID.randomUUID();
         jdbcTemplate.update("""
