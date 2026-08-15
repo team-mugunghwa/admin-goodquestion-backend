@@ -4,7 +4,7 @@ import com.mugunghwa.goodquestion.admin.global.security.AdminPrincipal;
 import com.mugunghwa.goodquestion.admin.guide.dto.GuideDtos.CreateRequest;
 import com.mugunghwa.goodquestion.admin.guide.dto.GuideDtos.GuideResponse;
 import com.mugunghwa.goodquestion.admin.guide.dto.GuideDtos.ReorderRequest;
-import com.mugunghwa.goodquestion.admin.support.AdminFixture;
+import com.mugunghwa.goodquestion.admin.support.TestFixture;
 import com.mugunghwa.goodquestion.admin.support.IntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -22,13 +22,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 class GuideServiceTest {
 
     @Autowired GuideService guideService;
-    @Autowired AdminFixture adminFixture;
+    @Autowired TestFixture fixture;
 
     private AdminPrincipal admin;
 
     @BeforeEach
     void setUp() {
-        admin = adminFixture.createAdmin();
+        admin = fixture.createAdmin();
     }
 
     @Test

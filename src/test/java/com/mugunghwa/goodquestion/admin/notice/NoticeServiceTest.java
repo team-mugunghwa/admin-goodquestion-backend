@@ -5,7 +5,7 @@ import com.mugunghwa.goodquestion.admin.global.security.AdminPrincipal;
 import com.mugunghwa.goodquestion.admin.notice.dto.NoticeDtos.CreateRequest;
 import com.mugunghwa.goodquestion.admin.notice.dto.NoticeDtos.NoticeDetail;
 import com.mugunghwa.goodquestion.admin.notice.dto.NoticeDtos.UpdateRequest;
-import com.mugunghwa.goodquestion.admin.support.AdminFixture;
+import com.mugunghwa.goodquestion.admin.support.TestFixture;
 import com.mugunghwa.goodquestion.admin.support.IntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -21,13 +21,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 class NoticeServiceTest {
 
     @Autowired NoticeService noticeService;
-    @Autowired AdminFixture adminFixture;
+    @Autowired TestFixture fixture;
 
     private AdminPrincipal admin;
 
     @BeforeEach
     void setUp() {
-        admin = adminFixture.createAdmin();
+        admin = fixture.createAdmin();
     }
 
     @Test
