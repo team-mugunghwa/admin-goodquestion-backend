@@ -2,7 +2,10 @@ package com.mugunghwa.goodquestion.admin.global.config;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
@@ -190,5 +193,53 @@ class RequiredEnvironmentTest {
         assertThat(check(Map.of(
                 "DB_URL", "jdbc:postgresql://host:5432/goodquestion?sslmode=require",
                 "ADMIN_JWT_SECRET", VALID_SECRET))).isEmpty();
+    }
+
+    @Test
+    @DisplayName("자리만 채운 FCM 자격증명을 잡는다")
+    void reportsPlaceholderFcmCredentials() {
+        // 비워 두면 로그만 남기는 발송기로 바뀌어 정상 기동한다. 그런데 "FCM1" 처럼
+        // 아무 값이나 넣으면 진짜 자격증명으로 보고 읽으려다 실패해서 앱이 죽는다.
+        List<String> problems = check(Map.of(
+                "DB_URL", VALID_URL,
+                "ADMIN_JWT_SECRET", VALID_SECRET,
+                "FCM_CREDENTIALS", "FCM1"));
+
+        assertThat(problems).hasSize(1);
+        assertThat(problems.getFirst())
+                .contains("자격증명으로 보이지 않습니다")
+                .contains("FCM1")
+                .contains("아예 지우세요");
+    }
+
+    @Test
+    @DisplayName("FCM 을 비워 두면 아무 말도 하지 않는다")
+    void allowsBlankFcmCredentials() {
+        assertThat(check(Map.of(
+                "DB_URL", VALID_URL,
+                "ADMIN_JWT_SECRET", VALID_SECRET,
+                "FCM_CREDENTIALS", ""))).isEmpty();
+    }
+
+    @Test
+    @DisplayName("JSON 원문은 통과한다")
+    void allowsJsonCredentials() {
+        assertThat(check(Map.of(
+                "DB_URL", VALID_URL,
+                "ADMIN_JWT_SECRET", VALID_SECRET,
+                "FCM_CREDENTIALS",
+                "{\"type\":\"service_account\",\"project_id\":\"gq\"}"))).isEmpty();
+    }
+
+    @Test
+    @DisplayName("실제로 있는 파일 경로는 통과한다")
+    void allowsCredentialFilePath(@TempDir Path directory) throws Exception {
+        Path file = directory.resolve("fcm.json");
+        Files.writeString(file, "{\"type\":\"service_account\"}");
+
+        assertThat(check(Map.of(
+                "DB_URL", VALID_URL,
+                "ADMIN_JWT_SECRET", VALID_SECRET,
+                "FCM_CREDENTIALS", file.toString()))).isEmpty();
     }
 }

@@ -1,6 +1,8 @@
 package com.mugunghwa.goodquestion.admin.global.config;
 
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.UnaryOperator;
@@ -52,6 +54,7 @@ public final class RequiredEnvironment {
         List<String> problems = new ArrayList<>();
         checkDatabaseUrl(lookup.apply("DB_URL"), problems);
         checkJwtSecret(lookup.apply("ADMIN_JWT_SECRET"), problems);
+        checkFcmCredentials(lookup.apply("FCM_CREDENTIALS"), problems);
         return problems;
     }
 
@@ -145,6 +148,36 @@ public final class RequiredEnvironment {
                       openssl rand -base64 32 로 다시 만드세요."""
                     .formatted(length, MIN_SECRET_BYTES));
         }
+    }
+
+    /**
+     * 자리를 채우려고 아무 값이나 넣은 FCM 자격증명을 잡는다.
+     *
+     * <p>비워 두면 발송기가 로그만 남기는 구현으로 대체되어 앱이 정상으로 뜬다.
+     * 그런데 "FCM1" 같은 값을 넣으면 비어 있지 않으므로 진짜 자격증명으로 보고
+     * 읽으려다 실패한다. 자격증명이 잘못됐는데 뜨게 두지 않는 것은 일부러 그렇게
+     * 한 것이다 - 답변은 등록되는데 푸시만 조용히 안 나가는 상태가 제일 나쁘다.
+     * 다만 그 실패가 빈 생성 예외 안에 묻혀서 원인이 보이지 않으므로 여기서 먼저 잡는다.
+     *
+     * <p>서비스 계정 JSON 은 반드시 여는 중괄호로 시작한다. 파일 경로도 아니고
+     * 중괄호로 시작하지도 않으면 자격증명일 수 없다.
+     */
+    private static void checkFcmCredentials(String credentials, List<String> problems) {
+        if (isBlank(credentials)) {
+            return; // 푸시를 안 쓰는 정상 상태
+        }
+        String value = credentials.trim();
+        if (value.startsWith("{") || Files.isRegularFile(Path.of(value))) {
+            return;
+        }
+        problems.add("""
+                FCM_CREDENTIALS 이 자격증명으로 보이지 않습니다: %s
+                  서비스 계정 JSON 원문이거나 그 파일의 경로여야 합니다. JSON 이라면
+                  중괄호로 시작합니다.
+                  푸시를 아직 안 쓴다면 이 값과 FCM_PROJECT_ID 를 아예 지우세요.
+                  비워 두면 발송기가 로그만 남기는 구현으로 바뀌어 앱은 정상으로 뜨고,
+                  답변 알림은 DB 에 쌓여서 사용자가 앱 안에서 확인할 수 있습니다."""
+                .formatted(value));
     }
 
     /** 배포 로그에서 눈에 띄도록 문제들을 한 덩어리로 묶는다. */
