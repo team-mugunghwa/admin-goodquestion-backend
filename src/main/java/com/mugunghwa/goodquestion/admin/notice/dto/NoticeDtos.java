@@ -66,13 +66,15 @@ public final class NoticeDtos {
             int viewCount,
             String authorName,
             OffsetDateTime createdAt,
-            OffsetDateTime updatedAt
+            OffsetDateTime updatedAt,
+            /** 예약 공개 시각. 걸려 있지 않으면 null 이다. */
+            OffsetDateTime scheduledPublishAt
     ) {
-        public static NoticeDetail from(Notice notice) {
+        public static NoticeDetail from(Notice notice, OffsetDateTime scheduledPublishAt) {
             return new NoticeDetail(notice.getId(), notice.getTitle(), notice.getContent(),
                     notice.getCategory(), notice.isPinned(), notice.getStatus(),
                     notice.getPublishedAt(), notice.getViewCount(), notice.getAuthorName(),
-                    notice.getCreatedAt(), notice.getUpdatedAt());
+                    notice.getCreatedAt(), notice.getUpdatedAt(), scheduledPublishAt);
         }
     }
 }
