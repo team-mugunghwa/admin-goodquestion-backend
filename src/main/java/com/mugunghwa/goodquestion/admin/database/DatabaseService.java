@@ -2,8 +2,13 @@ package com.mugunghwa.goodquestion.admin.database;
 
 import com.mugunghwa.goodquestion.admin.database.dto.DatabaseDtos.ColumnInfo;
 import com.mugunghwa.goodquestion.admin.database.dto.DatabaseDtos.IndexInfo;
+import com.mugunghwa.goodquestion.admin.database.dto.DatabaseDtos.KeyColumn;
+import com.mugunghwa.goodquestion.admin.database.dto.DatabaseDtos.ReferenceInfo;
+import com.mugunghwa.goodquestion.admin.database.dto.DatabaseDtos.RelationInfo;
 import com.mugunghwa.goodquestion.admin.database.dto.DatabaseDtos.RowPage;
+import com.mugunghwa.goodquestion.admin.database.dto.DatabaseDtos.SchemaGraph;
 import com.mugunghwa.goodquestion.admin.database.dto.DatabaseDtos.TableDetail;
+import com.mugunghwa.goodquestion.admin.database.dto.DatabaseDtos.TableNode;
 import com.mugunghwa.goodquestion.admin.database.dto.DatabaseDtos.TableSummary;
 import com.mugunghwa.goodquestion.admin.global.audit.AuditAction;
 import com.mugunghwa.goodquestion.admin.global.audit.AuditLogger;
@@ -26,6 +31,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -63,13 +69,19 @@ public class DatabaseService {
 
     private static final String TARGET_TYPE = "DATABASE";
 
-    /** psql 이 보여주는 긴 타입 이름을 개발자가 쓰는 짧은 이름으로 바꾼다. */
-    private static final Map<String, String> TYPE_ALIASES = Map.of(
-            "character varying", "varchar",
-            "timestamp with time zone", "timestamptz",
-            "timestamp without time zone", "timestamp",
-            "double precision", "float8",
-            "character", "char");
+    /**
+     * psql 이 보여주는 긴 타입 이름을 개발자가 쓰는 짧은 이름으로 바꾼다.
+     *
+     * <p><b>긴 이름을 먼저 둔다.</b> "character varying" 은 "character" 로도 시작하므로,
+     * 짧은 쪽을 먼저 맞춰 보면 "char varying(50)" 이라는 없는 타입이 나온다.
+     * 순서가 정해지지 않은 Map 을 쓰면 실행할 때마다 결과가 달라진다.
+     */
+    private static final List<Map.Entry<String, String>> TYPE_ALIASES = List.of(
+            Map.entry("character varying", "varchar"),
+            Map.entry("timestamp with time zone", "timestamptz"),
+            Map.entry("timestamp without time zone", "timestamp"),
+            Map.entry("double precision", "float8"),
+            Map.entry("character", "char"));
 
     private final JdbcTemplate jdbcTemplate;
     private final AuditLogger auditLogger;
@@ -134,7 +146,127 @@ public class DatabaseService {
                 countRows(tableName),
                 TableCatalog.hasPersonalData(tableName),
                 readColumns(tableName),
-                readIndexes(tableName));
+                readIndexes(tableName),
+                readReferencedBy(tableName));
+    }
+
+    // ------------------------------------------------------------------ 관계도
+
+    /**
+     * 전체 스키마의 상자와 선.
+     *
+     * <p>테이블을 하나씩 열어 가며 관계를 짐작하는 대신 한 장으로 보여 준다. 어떤
+     * 테이블이 어디에 딸려 있는지는 컬럼 목록만 봐서는 보이지 않는다.
+     *
+     * <p>테이블마다 질의를 던지지 않고 <b>세 번의 질의로 전체를 읽는다.</b> 40개
+     * 테이블에 각각 컬럼과 외래키를 물으면 80번이 넘는 왕복이 생긴다.
+     */
+    @Transactional(readOnly = true)
+    public SchemaGraph getSchemaGraph() {
+        List<RelationInfo> relations = readAllRelations();
+
+        // 테이블별 외래키 컬럼. 관계 목록을 한 번 더 훑는 대신 여기서 모아 둔다.
+        Map<String, Set<String>> foreignKeyColumns = new HashMap<>();
+        for (RelationInfo relation : relations) {
+            foreignKeyColumns
+                    .computeIfAbsent(relation.fromTable(), key -> new LinkedHashSet<>())
+                    .add(relation.fromColumn());
+        }
+
+        Map<String, List<String>> primaryKeyColumns = readAllPrimaryKeys();
+
+        List<TableNode> nodes = listTables().stream()
+                .map(table -> new TableNode(
+                        table.name(),
+                        table.comment(),
+                        table.group(),
+                        table.columnCount(),
+                        table.containsPersonalData(),
+                        keyColumnsOf(
+                                primaryKeyColumns.getOrDefault(table.name(), List.of()),
+                                foreignKeyColumns.getOrDefault(table.name(), Set.of()))))
+                .toList();
+
+        return new SchemaGraph(nodes, relations);
+    }
+
+    /** 기본키를 먼저, 그다음 외래키. 기본키이면서 외래키인 컬럼은 한 번만 넣는다. */
+    private List<KeyColumn> keyColumnsOf(List<String> primaryKeys, Set<String> foreignKeys) {
+        List<KeyColumn> keyColumns = new ArrayList<>();
+        for (String name : primaryKeys) {
+            keyColumns.add(new KeyColumn(name, true, foreignKeys.contains(name)));
+        }
+        for (String name : foreignKeys) {
+            if (!primaryKeys.contains(name)) {
+                keyColumns.add(new KeyColumn(name, false, true));
+            }
+        }
+        return keyColumns;
+    }
+
+    /**
+     * 모든 외래키를 한 번에 읽는다.
+     *
+     * <p>information_schema 대신 pg_constraint 를 쓴다. information_schema 의
+     * constraint_column_usage 는 컬럼이 여럿인 외래키에서 어느 컬럼이 어느 컬럼과
+     * 짝인지 알려 주지 않아, 두 컬럼짜리 키를 네 줄로 부풀린다. conkey 와 confkey 를
+     * 나란히 펼치면 짝이 정확히 유지된다.
+     */
+    private List<RelationInfo> readAllRelations() {
+        return jdbcTemplate.query("""
+                select src.relname as from_table,
+                       sa.attname as from_column,
+                       tgt.relname as to_table,
+                       ta.attname as to_column,
+                       not sa.attnotnull as optional
+                from pg_constraint con
+                join pg_class src on src.oid = con.conrelid
+                join pg_class tgt on tgt.oid = con.confrelid
+                join pg_namespace n on n.oid = src.relnamespace
+                join lateral unnest(con.conkey, con.confkey) as k(src_att, tgt_att) on true
+                join pg_attribute sa on sa.attrelid = con.conrelid and sa.attnum = k.src_att
+                join pg_attribute ta on ta.attrelid = con.confrelid and ta.attnum = k.tgt_att
+                where con.contype = 'f' and n.nspname = 'public'
+                order by src.relname, sa.attname
+                """, (rs, rowNum) -> new RelationInfo(
+                rs.getString("from_table"),
+                rs.getString("from_column"),
+                rs.getString("to_table"),
+                rs.getString("to_column"),
+                rs.getBoolean("optional")));
+    }
+
+    private Map<String, List<String>> readAllPrimaryKeys() {
+        Map<String, List<String>> primaryKeys = new HashMap<>();
+        jdbcTemplate.query("""
+                select c.relname as table_name, a.attname as column_name
+                from pg_index x
+                join pg_class c on c.oid = x.indrelid
+                join pg_namespace n on n.oid = c.relnamespace
+                join pg_attribute a on a.attrelid = c.oid and a.attnum = any(x.indkey)
+                where n.nspname = 'public' and x.indisprimary
+                order by c.relname, a.attnum
+                """, rs -> {
+            primaryKeys
+                    .computeIfAbsent(rs.getString("table_name"), key -> new ArrayList<>())
+                    .add(rs.getString("column_name"));
+        });
+        return primaryKeys;
+    }
+
+    private List<ReferenceInfo> readReferencedBy(String tableName) {
+        return jdbcTemplate.query("""
+                select src.relname as from_table, sa.attname as from_column
+                from pg_constraint con
+                join pg_class src on src.oid = con.conrelid
+                join pg_class tgt on tgt.oid = con.confrelid
+                join pg_namespace n on n.oid = src.relnamespace
+                join lateral unnest(con.conkey) as k(src_att) on true
+                join pg_attribute sa on sa.attrelid = con.conrelid and sa.attnum = k.src_att
+                where con.contype = 'f' and n.nspname = 'public' and tgt.relname = ?
+                order by src.relname, sa.attname
+                """, (rs, rowNum) -> new ReferenceInfo(
+                rs.getString("from_table"), rs.getString("from_column")), tableName);
     }
 
     // ------------------------------------------------------------------ 행 조회
@@ -351,7 +483,7 @@ public class DatabaseService {
     }
 
     private String shortenType(String type) {
-        for (Map.Entry<String, String> alias : TYPE_ALIASES.entrySet()) {
+        for (Map.Entry<String, String> alias : TYPE_ALIASES) {
             if (type.startsWith(alias.getKey())) {
                 return alias.getValue() + type.substring(alias.getKey().length());
             }

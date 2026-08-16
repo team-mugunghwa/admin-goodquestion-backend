@@ -50,6 +50,15 @@ public final class DatabaseDtos {
     public record IndexInfo(String name, String definition, boolean unique, boolean primaryKey) {
     }
 
+    /**
+     * 이 테이블을 가리키는 쪽.
+     *
+     * <p>컬럼의 외래키는 "내가 어디를 보는가"만 알려 준다. 그런데 테이블을 지우거나
+     * 값의 쓰임을 따질 때 필요한 것은 반대 방향, "누가 나를 보는가"다.
+     */
+    public record ReferenceInfo(String table, String column) {
+    }
+
     public record TableDetail(
             String name,
             String comment,
@@ -57,8 +66,47 @@ public final class DatabaseDtos {
             long rowCount,
             boolean containsPersonalData,
             List<ColumnInfo> columns,
-            List<IndexInfo> indexes
+            List<IndexInfo> indexes,
+            List<ReferenceInfo> referencedBy
     ) {
+    }
+
+    /**
+     * 관계도의 상자 하나.
+     *
+     * @param keyColumns 기본키와 외래키만. 관계를 그리는 데 필요한 것이 이 둘이고,
+     *                   상자마다 컬럼을 다 적으면 40개 테이블이 화면에 들어가지 않는다
+     */
+    public record TableNode(
+            String name,
+            String comment,
+            String group,
+            int columnCount,
+            boolean containsPersonalData,
+            List<KeyColumn> keyColumns
+    ) {
+    }
+
+    public record KeyColumn(String name, boolean primaryKey, boolean foreignKey) {
+    }
+
+    /**
+     * 관계 하나. 외래키 한 쌍이다.
+     *
+     * @param optional 참조하는 컬럼이 null 을 받는지. null 을 받으면 "없을 수도 있는
+     *                 관계"이고, 화면은 이것으로 선의 모양을 달리 그린다
+     */
+    public record RelationInfo(
+            String fromTable,
+            String fromColumn,
+            String toTable,
+            String toColumn,
+            boolean optional
+    ) {
+    }
+
+    /** 관계도 전체. 상자와 선을 한 번에 내린다. */
+    public record SchemaGraph(List<TableNode> tables, List<RelationInfo> relations) {
     }
 
     /**

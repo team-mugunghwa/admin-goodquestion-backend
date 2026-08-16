@@ -1,6 +1,7 @@
 package com.mugunghwa.goodquestion.admin.database;
 
 import com.mugunghwa.goodquestion.admin.database.dto.DatabaseDtos.RowPage;
+import com.mugunghwa.goodquestion.admin.database.dto.DatabaseDtos.SchemaGraph;
 import com.mugunghwa.goodquestion.admin.database.dto.DatabaseDtos.TableDetail;
 import com.mugunghwa.goodquestion.admin.database.dto.DatabaseDtos.TableSummary;
 import com.mugunghwa.goodquestion.admin.global.security.AdminPrincipal;
@@ -35,6 +36,17 @@ public class DatabaseController {
     @GetMapping("/tables")
     public List<TableSummary> listTables() {
         return databaseService.listTables();
+    }
+
+    /**
+     * 관계도. 상자와 선을 한 번에 내린다.
+     *
+     * <p>배치는 화면이 정한다. 서버가 좌표까지 정하면 화면 크기나 접힌 분류에 따라
+     * 다시 계산해야 할 때마다 왕복이 생긴다.
+     */
+    @GetMapping("/relations")
+    public SchemaGraph getRelations() {
+        return databaseService.getSchemaGraph();
     }
 
     /** 테이블 하나의 컬럼, 인덱스, 정확한 행 수. */
