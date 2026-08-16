@@ -1,7 +1,10 @@
 package com.mugunghwa.goodquestion.admin.database;
 
 import com.mugunghwa.goodquestion.admin.database.dto.DatabaseDtos.ColumnInfo;
+import com.mugunghwa.goodquestion.admin.database.dto.DatabaseDtos.RelationInfo;
 import com.mugunghwa.goodquestion.admin.database.dto.DatabaseDtos.RowPage;
+import com.mugunghwa.goodquestion.admin.database.dto.DatabaseDtos.SchemaGraph;
+import com.mugunghwa.goodquestion.admin.database.dto.DatabaseDtos.TableNode;
 import com.mugunghwa.goodquestion.admin.database.dto.DatabaseDtos.TableDetail;
 import com.mugunghwa.goodquestion.admin.database.dto.DatabaseDtos.TableSummary;
 import com.mugunghwa.goodquestion.admin.global.error.BusinessException;
@@ -187,6 +190,77 @@ class DatabaseServiceTest {
         // 드라이버 전용 객체가 그대로 나가면 화면에 클래스 이름이 찍힌다.
         assertThat(row.get("proper_nouns")).isNotInstanceOf(java.sql.Array.class);
         assertThat(String.valueOf(row.get("element_criteria"))).doesNotContain("PGobject");
+    }
+
+    @Test
+    @DisplayName("관계도에 모든 테이블과 외래키가 들어 있다")
+    void buildsSchemaGraph() {
+        SchemaGraph graph = databaseService.getSchemaGraph();
+
+        assertThat(graph.tables()).hasSameSizeAs(databaseService.listTables());
+        assertThat(graph.relations()).isNotEmpty();
+
+        // 아이는 보호자에 딸린다. 이 관계가 빠지면 관계도가 쓸모없다.
+        assertThat(graph.relations())
+                .anySatisfy(relation -> {
+                    assertThat(relation.fromTable()).isEqualTo("children");
+                    assertThat(relation.fromColumn()).isEqualTo("parent_id");
+                    assertThat(relation.toTable()).isEqualTo("parents");
+                    assertThat(relation.toColumn()).isEqualTo("id");
+                });
+
+        // 가리키는 테이블은 모두 상자로 있어야 한다. 없으면 화면에서 선이 허공으로 간다.
+        List<String> names = graph.tables().stream().map(TableNode::name).toList();
+        assertThat(graph.relations()).allSatisfy(relation -> {
+            assertThat(names).contains(relation.fromTable());
+            assertThat(names).contains(relation.toTable());
+        });
+    }
+
+    @Test
+    @DisplayName("관계도 상자에 기본키와 외래키가 표시된다")
+    void marksKeyColumns() {
+        SchemaGraph graph = databaseService.getSchemaGraph();
+
+        TableNode children = graph.tables().stream()
+                .filter(node -> node.name().equals("children")).findFirst().orElseThrow();
+
+        assertThat(children.keyColumns())
+                .anySatisfy(key -> {
+                    assertThat(key.name()).isEqualTo("id");
+                    assertThat(key.primaryKey()).isTrue();
+                })
+                .anySatisfy(key -> {
+                    assertThat(key.name()).isEqualTo("parent_id");
+                    assertThat(key.foreignKey()).isTrue();
+                    assertThat(key.primaryKey()).isFalse();
+                });
+    }
+
+    @Test
+    @DisplayName("컬럼이 여럿인 외래키가 부풀려지지 않는다")
+    void keepsCompositeForeignKeysPaired() {
+        SchemaGraph graph = databaseService.getSchemaGraph();
+
+        // 같은 (from, to) 쌍이 두 번 나오면 컬럼 짝이 어긋난 것이다.
+        assertThat(graph.relations())
+                .extracting(relation -> relation.fromTable() + "." + relation.fromColumn()
+                        + " -> " + relation.toTable() + "." + relation.toColumn())
+                .doesNotHaveDuplicates();
+    }
+
+    @Test
+    @DisplayName("테이블 상세에 자기를 가리키는 곳이 함께 나온다")
+    void listsIncomingReferences() {
+        TableDetail parents = databaseService.getTable("parents");
+
+        // 컬럼의 외래키는 "내가 어디를 보는가"만 알려 준다. 반대 방향이 있어야
+        // 이 테이블을 지울 때 무엇이 걸리는지 알 수 있다.
+        assertThat(parents.referencedBy())
+                .anySatisfy(reference -> {
+                    assertThat(reference.table()).isEqualTo("children");
+                    assertThat(reference.column()).isEqualTo("parent_id");
+                });
     }
 
     private long countAuditLogs() {
