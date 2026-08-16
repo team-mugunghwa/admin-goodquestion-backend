@@ -1,0 +1,118 @@
+# Railway 배포 가이드
+
+관리자 백엔드를 Railway에 배포하는 절차.
+
+## 가장 중요한 것
+
+**서비스 백엔드와 같은 PostgreSQL을 봐야 한다.** DB를 새로 만들면 관리자가 고친
+공지와 이야기가 사용자 앱에 전혀 보이지 않는다. 배포가 성공했는데 아무것도
+연동되지 않는 형태로 나타나므로 알아채기 어렵다.
+
+그래서 **goodquestion-backend가 이미 떠 있는 Railway 프로젝트 안에 서비스를
+추가**한다. 새 프로젝트를 만들면 내부 네트워크가 갈려 그 Postgres를 참조할 수 없다.
+
+## 사전 준비
+
+- Railway 계정과 goodquestion-backend가 배포된 기존 프로젝트
+- 관리자 토큰 서명 키. `openssl rand -base64 32` 로 만든다
+- FCM 서비스 계정 JSON (푸시를 쓸 경우. 없어도 배포는 된다)
+
+## 1. 서비스 추가
+
+1. 기존 Railway 프로젝트를 연다. `goodquestion-backend` 와 `Postgres` 가 있어야 한다
+2. New -> GitHub Repo -> `admin-goodquestion-backend` 선택
+3. Railway가 저장소 루트의 `Dockerfile` 과 `railway.toml` 을 감지해 빌드한다
+4. 첫 배포는 환경변수가 없어 실패한다. 정상이다
+
+## 2. 환경변수
+
+서비스 -> Variables 탭에 넣는다. `${{ Postgres.VAR }}` 는 같은 프로젝트의 다른
+서비스 변수를 참조하는 Railway 문법이다.
+
+```
+DB_URL=jdbc:postgresql://${{ Postgres.PGHOST }}:${{ Postgres.PGPORT }}/${{ Postgres.PGDATABASE }}
+DB_USERNAME=${{ Postgres.PGUSER }}
+DB_PASSWORD=${{ Postgres.PGPASSWORD }}
+
+ADMIN_JWT_SECRET=<openssl rand -base64 32 결과>
+ADMIN_JWT_EXPIRATION_MS=1800000
+ADMIN_JWT_REFRESH_EXPIRATION_MS=43200000
+
+CORS_ALLOWED_ORIGIN_PATTERNS=https://admin-goodquestion-frontend.vercel.app,https://admin-goodquestion-frontend-*-team-mugunghwa.vercel.app
+
+SERVICE_BASE_URL=https://goodquestion-frontend.vercel.app
+```
+
+`DB_URL` 은 `jdbc:` 로 시작해야 한다. Postgres 서비스가 주는 `DATABASE_URL` 은
+`postgresql://` 스킴이라 Spring이 읽지 못한다.
+
+**`ADMIN_JWT_SECRET` 은 서비스 백엔드의 `JWT_SECRET` 과 반드시 다른 값을 쓴다.**
+같으면 보호자 앱이 받은 토큰의 서명이 관리자 API에서도 통과한다.
+
+### 푸시를 쓸 경우
+
+```
+FCM_CREDENTIALS=<서비스 계정 JSON 원문 전체>
+FCM_PROJECT_ID=<Firebase 프로젝트 id>
+```
+
+`FCM_CREDENTIALS` 는 파일 경로와 JSON 원문을 모두 받는다. Railway는 파일을 올릴
+수 없으므로 JSON을 통째로 붙여 넣는다.
+
+**비워 두면 푸시만 나가지 않고 앱은 정상 기동한다.** 알림은 DB에 쌓이므로
+사용자는 앱 안 알림함에서 답변을 확인할 수 있다. 반대로 값이 있는데 읽지
+못하면 기동을 막는다. 넣었는데 조용히 안 나가는 상태가 제일 나쁘기 때문이다.
+
+## 3. 공개 주소 만들기
+
+서비스 -> Settings -> Networking -> Generate Domain.
+`admin-goodquestion-backend-production.up.railway.app` 형태의 주소가 나온다.
+
+관리자 콘솔(Vercel)의 `API_BASE_URL` 에 넣을 값은 여기에 `/api/admin` 을 붙인 것이다.
+
+## 4. 확인
+
+```bash
+curl https://<주소>/actuator/health
+```
+
+기동 로그에서 확인할 것.
+
+```
+Migrating schema "public" to version "1 - init admin schema"
+Successfully applied N migrations
+Started AdminGoodquestionBackendApplication
+```
+
+FCM 자격증명을 안 넣었다면 아래 경고가 함께 뜬다. 오류가 아니다.
+
+```
+FCM 자격증명이 없어 푸시를 실제로 보내지 않습니다.
+```
+
+## 5. 배포 순서에 관한 주의
+
+관리자 백엔드와 서비스 백엔드는 **공유 테이블 DDL을 양쪽에 중복으로 갖고 있고
+둘 다 `if not exists`** 다. 어느 쪽이 먼저 떠도 된다. 자세한 배경은
+[admin-backend-guide.md](admin-backend-guide.md) 3절에 있다.
+
+다만 **서비스 백엔드를 먼저 최신으로 배포**하는 편이 낫다. 그쪽의
+`V11__add_service_desk.sql`, `V12__add_parent_status.sql` 이 적용돼 있어야
+사용자 앱의 공지와 문의 화면이 함께 동작한다.
+
+## 6. 시드 관리자 계정을 반드시 바꾼다
+
+첫 배포 때 `R__1_seed_admin.sql` 이 아래 두 계정을 만든다.
+
+| 이메일 | 비밀번호 |
+| --- | --- |
+| admin@goodquestion.kr | admin1234! |
+| cs@goodquestion.kr | admin1234! |
+
+**공개 주소가 생기는 순간 누구나 이 값으로 로그인할 수 있다.** 배포 직후
+로그인해서 내 계정 화면에서 비밀번호를 바꾸고, 쓰지 않는 계정은 관리자 계정
+화면에서 지운다.
+
+## 재배포
+
+`develop` 브랜치에 push하면 자동으로 다시 배포된다. 서비스 백엔드와 같은 설정이다.

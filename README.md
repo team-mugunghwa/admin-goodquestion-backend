@@ -36,4 +36,5 @@ cp .env.example .env   # 값을 채운다. DB_URL은 서비스 백엔드와 같�
 시드 관리자 계정은 `admin@goodquestion.kr` / `admin1234!` 이다. **첫 로그인 후 바꾼다.**
 
 자세한 셋업과 구조는 [docs/admin-backend-guide.md](docs/admin-backend-guide.md),
-엔드포인트 목록은 [docs/API.md](docs/API.md)에 있다.
+엔드포인트 목록은 [docs/API.md](docs/API.md), 배포는
+[docs/deploy-railway.md](docs/deploy-railway.md)에 있다.
