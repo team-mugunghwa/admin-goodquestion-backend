@@ -4,6 +4,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.UnaryOperator;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * 기동에 반드시 필요한 환경변수를 검사한다.
@@ -32,6 +34,10 @@ public final class RequiredEnvironment {
 
     /** Railway 가 다른 서비스의 값을 끌어 쓸 때의 표기. 남아 있으면 참조가 풀리지 않은 것이다. */
     private static final String UNRESOLVED_REFERENCE = "${{";
+
+    /** 호스트/포트/DB 이름을 따로 꺼내 보려고 쪼갠다. 물음표 뒤 옵션은 보지 않는다. */
+    private static final Pattern POSTGRES_URL = Pattern.compile(
+            "^jdbc:postgresql://(?<host>[^:/?]*)(?::(?<port>[^/?]*))?/(?<database>[^?]*).*$");
 
     private RequiredEnvironment() {
     }
@@ -72,7 +78,49 @@ public final class RequiredEnvironment {
                       그대로 붙여 넣으면 스프링이 읽지 못합니다. 아래처럼 직접 조립하세요.
                       jdbc:postgresql://${{ Postgres.PGHOST }}:${{ Postgres.PGPORT }}/${{ Postgres.PGDATABASE }}"""
                     .formatted(url));
+            return;
         }
+        checkEmptyParts(url, problems);
+    }
+
+    /**
+     * 조립은 됐는데 알맹이가 빈 경우를 잡는다.
+     *
+     * <p>Railway 참조는 못 찾으면 문자열로 남는 게 아니라 <b>빈 값으로 바뀐다.</b>
+     * 그래서 {@code jdbc:postgresql://${{ Postgres.PGHOST }}:.../...} 가
+     * {@code jdbc:postgresql://:/} 가 된다. 형식만 보면 jdbc 로 시작하고 참조도 안
+     * 남아 있어서 앞의 검사들을 다 통과하는데, 정작 접속할 곳이 없다. 드라이버는
+     * 이때 "claims to not accept jdbcUrl" 이라고만 말해서 원인이 보이지 않는다.
+     */
+    private static void checkEmptyParts(String url, List<String> problems) {
+        Matcher matcher = POSTGRES_URL.matcher(url);
+        if (!matcher.matches()) {
+            return;
+        }
+        List<String> empty = new ArrayList<>();
+        if (matcher.group("host").isBlank()) {
+            empty.add("호스트(PGHOST)");
+        }
+        String port = matcher.group("port");
+        if (port != null && port.isBlank()) {
+            empty.add("포트(PGPORT)");
+        }
+        if (matcher.group("database").isBlank()) {
+            empty.add("DB 이름(PGDATABASE)");
+        }
+        if (empty.isEmpty()) {
+            return;
+        }
+
+        problems.add("""
+                DB_URL 에 %s 이(가) 비어 있습니다: %s
+                  Railway 변수 참조가 빈 값으로 바뀐 것입니다. 참조는 못 찾아도 오류를
+                  내지 않고 조용히 빈 값이 됩니다.
+                  1) Postgres 서비스의 실제 이름을 확인하세요. ${{ Postgres.PGHOST }} 의
+                     'Postgres' 는 그 서비스 이름과 정확히 같아야 합니다.
+                  2) 관리자 백엔드와 Postgres 가 같은 프로젝트 안에 있어야 합니다.
+                  3) Variables 탭에서 값이 실제 호스트명으로 보이는지 확인하세요."""
+                .formatted(String.join(", ", empty), url));
     }
 
     private static void checkJwtSecret(String secret, List<String> problems) {

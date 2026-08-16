@@ -134,4 +134,61 @@ class RequiredEnvironmentTest {
                 .contains("ADMIN_JWT_SECRET")
                 .contains("docs/deploy-railway.md");
     }
+
+    @Test
+    @DisplayName("참조가 빈 값으로 바뀌어 알맹이가 없으면 잡는다")
+    void reportsEmptyUrlParts() {
+        // Railway 참조는 못 찾아도 문자열로 남지 않고 조용히 빈 값이 된다.
+        // 그래서 형식만 보면 멀쩡한 jdbc:postgresql://:/ 가 만들어진다.
+        // 드라이버는 "claims to not accept jdbcUrl" 이라고만 말해 원인이 보이지 않는다.
+        List<String> problems = check(Map.of(
+                "DB_URL", "jdbc:postgresql://:/",
+                "ADMIN_JWT_SECRET", VALID_SECRET));
+
+        assertThat(problems).hasSize(1);
+        assertThat(problems.getFirst())
+                .contains("비어 있습니다")
+                .contains("호스트(PGHOST)")
+                .contains("DB 이름(PGDATABASE)")
+                .contains("서비스 이름과 정확히 같아야");
+    }
+
+    @Test
+    @DisplayName("호스트만 비어도 잡는다")
+    void reportsEmptyHostOnly() {
+        List<String> problems = check(Map.of(
+                "DB_URL", "jdbc:postgresql://:5432/goodquestion",
+                "ADMIN_JWT_SECRET", VALID_SECRET));
+
+        assertThat(problems).hasSize(1);
+        assertThat(problems.getFirst()).contains("호스트(PGHOST)");
+    }
+
+    @Test
+    @DisplayName("DB 이름만 비어도 잡는다")
+    void reportsEmptyDatabaseOnly() {
+        List<String> problems = check(Map.of(
+                "DB_URL", "jdbc:postgresql://host.railway.internal:5432/",
+                "ADMIN_JWT_SECRET", VALID_SECRET));
+
+        assertThat(problems).hasSize(1);
+        assertThat(problems.getFirst()).contains("DB 이름(PGDATABASE)");
+    }
+
+    @Test
+    @DisplayName("포트를 생략한 정상 주소는 통과한다")
+    void allowsUrlWithoutPort() {
+        // 포트를 안 적으면 드라이버가 5432를 쓴다. 비어 있는 것과 다르다.
+        assertThat(check(Map.of(
+                "DB_URL", "jdbc:postgresql://postgres.railway.internal/goodquestion",
+                "ADMIN_JWT_SECRET", VALID_SECRET))).isEmpty();
+    }
+
+    @Test
+    @DisplayName("옵션이 붙은 정상 주소도 통과한다")
+    void allowsUrlWithQueryParameters() {
+        assertThat(check(Map.of(
+                "DB_URL", "jdbc:postgresql://host:5432/goodquestion?sslmode=require",
+                "ADMIN_JWT_SECRET", VALID_SECRET))).isEmpty();
+    }
 }
