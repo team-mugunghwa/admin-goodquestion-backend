@@ -12,8 +12,11 @@ import com.mugunghwa.goodquestion.admin.notification.NotificationService;
 import com.mugunghwa.goodquestion.admin.notification.NotificationType;
 import com.mugunghwa.goodquestion.admin.support.dto.SupportDtos.AnswerRequest;
 import com.mugunghwa.goodquestion.admin.support.dto.SupportDtos.AnswerResponse;
+import com.mugunghwa.goodquestion.admin.support.dto.SupportDtos.AssigneeResponse;
 import com.mugunghwa.goodquestion.admin.support.dto.SupportDtos.InquiryDetail;
 import com.mugunghwa.goodquestion.admin.support.dto.SupportDtos.InquirySummary;
+import com.mugunghwa.goodquestion.admin.support.dto.SupportDtos.NoteRequest;
+import com.mugunghwa.goodquestion.admin.support.dto.SupportDtos.NoteResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -45,6 +48,8 @@ public class SupportService {
 
     private final InquiryRepository inquiryRepository;
     private final InquiryAnswerRepository answerRepository;
+    private final InquiryAssigneeRepository assigneeRepository;
+    private final InquiryNoteRepository noteRepository;
     private final ParentRepository parentRepository;
     private final NotificationService notificationService;
     private final AuditLogger auditLogger;
@@ -62,6 +67,10 @@ public class SupportService {
         var answered = ids.isEmpty() ? List.<InquiryAnswer>of()
                 : answerRepository.findAllByInquiryIdIn(ids);
         var answeredIds = answered.stream().map(InquiryAnswer::getInquiryId).collect(Collectors.toSet());
+        Map<UUID, String> assignees = ids.isEmpty() ? Map.of()
+                : assigneeRepository.findAllById(ids).stream()
+                        .collect(Collectors.toMap(InquiryAssignee::getInquiryId,
+                                InquiryAssignee::getAdminEmail));
 
         return PageResponse.of(inquiries, inquiry -> {
             Parent parent = parents.get(inquiry.getParentId());
@@ -70,7 +79,8 @@ public class SupportService {
                     parent == null ? null : parent.getEmail(),
                     inquiry.getCategory(), inquiry.getTitle(), inquiry.getStatus(),
                     answeredIds.contains(inquiry.getId()), inquiry.getAnsweredAt(),
-                    inquiry.getCreatedAt());
+                    inquiry.getCreatedAt(),
+                    assignees.get(inquiry.getId()));
         });
     }
 
@@ -78,10 +88,72 @@ public class SupportService {
         Inquiry inquiry = load(inquiryId);
         Parent parent = parentRepository.findById(inquiry.getParentId()).orElse(null);
         InquiryAnswer answer = answerRepository.findByInquiryId(inquiryId).orElse(null);
+        String assigneeEmail = assigneeRepository.findById(inquiryId)
+                .map(InquiryAssignee::getAdminEmail).orElse(null);
+        List<NoteResponse> notes = noteRepository
+                .findAllByInquiryIdOrderByCreatedAtAsc(inquiryId).stream()
+                .map(NoteResponse::from).toList();
         return InquiryDetail.of(inquiry,
                 parent == null ? "(탈퇴한 사용자)" : parent.getName(),
                 parent == null ? null : parent.getEmail(),
-                answer);
+                answer, assigneeEmail, notes);
+    }
+
+    /**
+     * 문의를 자기에게 배정한다.
+     *
+     * <p>다른 사람에게 배정하는 기능은 두지 않았다. 관리자 목록 조회가
+     * 최고관리자 전용이라 일반 관리자는 목록을 볼 수 없고, 실무에서도
+     * "내가 잡는다"가 기본 동작이다. 이미 다른 사람이 잡은 문의를 가져오는
+     * 것은 허용한다 - 담당자가 자리를 비웠을 때 넘겨받을 길이 있어야 한다.
+     */
+    @Transactional
+    public AssigneeResponse assignToMe(AdminPrincipal admin, UUID inquiryId) {
+        Inquiry inquiry = load(inquiryId);
+        String previous = assigneeRepository.findById(inquiryId)
+                .map(InquiryAssignee::getAdminEmail).orElse(null);
+
+        assigneeRepository.save(InquiryAssignee.builder()
+                .inquiryId(inquiryId)
+                .adminId(admin.id())
+                .adminEmail(admin.email())
+                .build());
+
+        auditLogger.log(admin, AuditAction.UPDATE, TARGET_TYPE, inquiryId,
+                previous == null
+                        ? "문의 담당: %s".formatted(inquiry.getTitle())
+                        : "문의 담당 인계(%s -> %s): %s"
+                                .formatted(previous, admin.email(), inquiry.getTitle()));
+        return new AssigneeResponse(admin.email());
+    }
+
+    @Transactional
+    public AssigneeResponse unassign(AdminPrincipal admin, UUID inquiryId) {
+        Inquiry inquiry = load(inquiryId);
+        assigneeRepository.findById(inquiryId).ifPresent(assignee -> {
+            assigneeRepository.delete(assignee);
+            auditLogger.log(admin, AuditAction.UPDATE, TARGET_TYPE, inquiryId,
+                    "문의 담당 해제: %s".formatted(inquiry.getTitle()));
+        });
+        return new AssigneeResponse(null);
+    }
+
+    /**
+     * 내부 메모를 남긴다. 사용자에게 보이지 않고, 수정과 삭제가 없다.
+     *
+     * <p>감사 로그에는 남기지 않는다. 메모 자체가 작성자와 시각이 붙은 기록이라
+     * 이중으로 남기면 감사 로그에서 정작 봐야 할 조작이 묻힌다.
+     */
+    @Transactional
+    public NoteResponse addNote(AdminPrincipal admin, UUID inquiryId, NoteRequest request) {
+        load(inquiryId);
+        InquiryNote note = noteRepository.save(InquiryNote.builder()
+                .inquiryId(inquiryId)
+                .authorAdminId(admin.id())
+                .authorEmail(admin.email())
+                .body(request.body().trim())
+                .build());
+        return NoteResponse.from(note);
     }
 
     /**

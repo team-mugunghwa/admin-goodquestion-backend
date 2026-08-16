@@ -44,6 +44,7 @@ final class TableCatalog {
             "messages", "utterance_analyses", "reports", "wordbook", "word_practices",
             "post_activity_results", "inquiries", "inquiry_answers", "notifications",
             "admin_accounts", "admin_refresh_tokens", "admin_audit_logs",
+            "admin_inquiry_notes", "admin_inquiry_assignees",
             "idempotent_requests");
 
     /**
@@ -66,7 +67,9 @@ final class TableCatalog {
                     "planets", "planet_items")),
             Map.entry("고객 지원", List.of(
                     "notices", "guides", "inquiries", "inquiry_answers",
-                    "notifications", "device_tokens")),
+                    "notifications", "device_tokens",
+                    "admin_reply_templates", "admin_inquiry_notes",
+                    "admin_inquiry_assignees")),
             Map.entry("관리자", List.of(
                     "admin_accounts", "admin_refresh_tokens", "admin_audit_logs")),
             Map.entry("시스템", List.of(

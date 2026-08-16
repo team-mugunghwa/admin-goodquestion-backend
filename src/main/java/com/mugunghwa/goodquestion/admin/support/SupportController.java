@@ -5,8 +5,11 @@ import com.mugunghwa.goodquestion.admin.global.security.CurrentAdmin;
 import com.mugunghwa.goodquestion.admin.global.web.PageResponse;
 import com.mugunghwa.goodquestion.admin.support.dto.SupportDtos.AnswerRequest;
 import com.mugunghwa.goodquestion.admin.support.dto.SupportDtos.AnswerResponse;
+import com.mugunghwa.goodquestion.admin.support.dto.SupportDtos.AssigneeResponse;
 import com.mugunghwa.goodquestion.admin.support.dto.SupportDtos.InquiryDetail;
 import com.mugunghwa.goodquestion.admin.support.dto.SupportDtos.InquirySummary;
+import com.mugunghwa.goodquestion.admin.support.dto.SupportDtos.NoteRequest;
+import com.mugunghwa.goodquestion.admin.support.dto.SupportDtos.NoteResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +17,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -61,6 +66,27 @@ public class SupportController {
                                        @PathVariable UUID inquiryId,
                                        @Valid @RequestBody AnswerRequest request) {
         return supportService.updateAnswer(admin, inquiryId, request);
+    }
+
+    /** 담당자 지정. 항상 "나"에게 배정한다. 이미 잡힌 문의도 넘겨받을 수 있다. */
+    @PutMapping("/{inquiryId}/assignee")
+    public AssigneeResponse assign(@CurrentAdmin AdminPrincipal admin,
+                                   @PathVariable UUID inquiryId) {
+        return supportService.assignToMe(admin, inquiryId);
+    }
+
+    @DeleteMapping("/{inquiryId}/assignee")
+    public AssigneeResponse unassign(@CurrentAdmin AdminPrincipal admin,
+                                     @PathVariable UUID inquiryId) {
+        return supportService.unassign(admin, inquiryId);
+    }
+
+    /** 내부 메모 추가. 사용자에게 보이지 않는다. */
+    @PostMapping("/{inquiryId}/notes")
+    public NoteResponse addNote(@CurrentAdmin AdminPrincipal admin,
+                                @PathVariable UUID inquiryId,
+                                @Valid @RequestBody NoteRequest request) {
+        return supportService.addNote(admin, inquiryId, request);
     }
 
     @PostMapping("/{inquiryId}/close")

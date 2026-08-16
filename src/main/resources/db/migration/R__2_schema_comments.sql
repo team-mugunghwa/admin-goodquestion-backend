@@ -59,6 +59,27 @@ begin
 ('admin_audit_logs', 'ip', '조작한 관리자의 IP'),
 ('admin_audit_logs', 'created_at', '조작 시각'),
 
+('admin_reply_templates', null, '고객센터 자주 쓰는 답변 템플릿. 팀이 공유하고, 변수({보호자} 등) 치환은 관리자 콘솔 화면이 한다.'),
+('admin_reply_templates', 'id', '템플릿 식별자'),
+('admin_reply_templates', 'title', '템플릿 이름. 고르는 목록에 보이는 짧은 제목'),
+('admin_reply_templates', 'body', '답변 본문 원문. {보호자}, {문의제목} 자리표시자가 들어 있을 수 있다'),
+('admin_reply_templates', 'created_at', '만든 시각'),
+('admin_reply_templates', 'updated_at', '마지막으로 고친 시각. 목록이 이 순서로 나온다'),
+
+('admin_inquiry_notes', null, '문의 내부 메모. 사용자에게 보이지 않는 팀 안의 기록이고, 처리 맥락을 믿을 수 있도록 수정과 삭제가 없다.'),
+('admin_inquiry_notes', 'id', '메모 식별자'),
+('admin_inquiry_notes', 'inquiry_id', '어느 문의의 메모인지'),
+('admin_inquiry_notes', 'author_admin_id', '작성한 관리자. 계정이 지워지면 null 이 된다'),
+('admin_inquiry_notes', 'author_email', '작성 당시의 관리자 이메일. 계정이 지워져도 누가 남겼는지 남는다'),
+('admin_inquiry_notes', 'body', '메모 본문'),
+('admin_inquiry_notes', 'created_at', '작성 시각'),
+
+('admin_inquiry_assignees', null, '문의 담당자. 문의 하나에 한 명이라 문의 id가 곧 기본키다. 두 명이 같은 문의에 동시에 답하는 사고를 막는다.'),
+('admin_inquiry_assignees', 'inquiry_id', '담당이 걸린 문의'),
+('admin_inquiry_assignees', 'admin_id', '담당 관리자. 계정이 지워지면 null 이 된다'),
+('admin_inquiry_assignees', 'admin_email', '담당 관리자 이메일'),
+('admin_inquiry_assignees', 'assigned_at', '담당을 잡은 시각'),
+
 -- ------------------------------------------------------------
 -- 사용자 (보호자와 아이)
 -- ------------------------------------------------------------
