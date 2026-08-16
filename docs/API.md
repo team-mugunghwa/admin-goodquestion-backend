@@ -166,7 +166,8 @@
 | 메서드 | 경로 | 설명 |
 | --- | --- | --- |
 | GET | `/database/tables` | 테이블 목록. 분류/설명/컬럼 수/대략적인 행 수 |
-| GET | `/database/tables/{tableName}` | 구조. 컬럼, 타입, 기본키, 외래키, 인덱스 |
+| GET | `/database/relations` | 관계도. 상자(테이블+기본키/외래키)와 선(외래키)을 한 번에 |
+| GET | `/database/tables/{tableName}` | 구조. 컬럼, 타입, 기본키, 외래키, 인덱스, 자기를 가리키는 곳 |
 | GET | `/database/tables/{tableName}/rows` | 값. `page`, `size`, `sortColumn`, `sortDirection`, `filterColumn`, `keyword` |
 
 **읽기 전용이다.** 쓰기 API를 두지 않았다. 관리자 콘솔은 사용자 서비스와 같은
@@ -177,6 +178,18 @@
 읽어 온다. 주석은 `R__2_schema_comments.sql` 이 관리하며, 반복 마이그레이션이라
 파일을 고치면 다음 기동에 다시 적용된다. **새 컬럼을 만들면 이 파일에 설명을
 같이 적는다.**
+
+### 관계도
+
+`/database/relations` 는 상자와 선만 준다. **배치(좌표)는 화면이 정한다.** 분류를
+바꾸거나 접을 때마다 좌표를 서버에 다시 물으면 그때마다 왕복이 생긴다.
+
+외래키는 `pg_constraint` 의 `conkey`/`confkey` 를 나란히 펼쳐서 읽는다.
+`information_schema.constraint_column_usage` 는 컬럼이 여럿인 외래키에서 어느
+컬럼이 어느 컬럼과 짝인지 알려 주지 않아, 두 컬럼짜리 키를 네 줄로 부풀린다.
+
+상자에 담는 컬럼은 기본키와 외래키뿐이다. 40개 테이블의 컬럼을 다 담으면 화면에
+들어가지 않고, 관계를 읽는 데 필요한 것은 이 둘이다.
 
 ### 안전장치
 
