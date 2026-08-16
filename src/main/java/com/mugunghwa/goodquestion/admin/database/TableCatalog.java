@@ -69,7 +69,8 @@ final class TableCatalog {
                     "notices", "guides", "inquiries", "inquiry_answers",
                     "notifications", "device_tokens",
                     "admin_reply_templates", "admin_inquiry_notes",
-                    "admin_inquiry_assignees")),
+                    "admin_inquiry_assignees",
+                    "admin_notice_schedules", "admin_notice_revisions")),
             Map.entry("관리자", List.of(
                     "admin_accounts", "admin_refresh_tokens", "admin_audit_logs")),
             Map.entry("시스템", List.of(
