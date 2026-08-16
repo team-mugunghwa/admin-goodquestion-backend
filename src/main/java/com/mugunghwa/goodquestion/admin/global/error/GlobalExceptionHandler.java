@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
@@ -52,6 +53,21 @@ public class GlobalExceptionHandler {
         log.warn("제약 위반", e);
         return ResponseEntity.status(org.springframework.http.HttpStatus.CONFLICT)
                 .body(new ErrorResponse("CONSTRAINT_VIOLATION", "다른 데이터와 충돌해 처리하지 못했습니다."));
+    }
+
+    /**
+     * 없는 경로로 들어온 요청.
+     *
+     * <p>이 핸들러가 없으면 아래 {@code Exception} 핸들러가 받아서 500 으로 내린다.
+     * 주소를 잘못 친 것뿐인데 서버가 고장 난 것처럼 보이고, 로그에는 스택트레이스가
+     * 남아 진짜 오류와 섞인다. 실제로 배포를 확인하다가 이것 때문에 없는 장애를
+     * 한참 쫓았다.
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNoResource(NoResourceFoundException e) {
+        log.debug("없는 경로: {}", e.getResourcePath());
+        return ResponseEntity.status(ErrorCode.NOT_FOUND.getStatus())
+                .body(ErrorResponse.of(ErrorCode.NOT_FOUND, "없는 경로입니다: " + e.getResourcePath()));
     }
 
     @ExceptionHandler(Exception.class)
