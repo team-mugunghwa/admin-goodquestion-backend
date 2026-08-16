@@ -148,8 +148,34 @@
 | PATCH | `/inquiries/{inquiryId}/answer` | 답변 수정. **알림을 다시 보내지 않는다** |
 | POST | `/inquiries/{inquiryId}/close` | 종료 |
 | POST | `/inquiries/{inquiryId}/reopen` | 재개 |
+| PUT | `/inquiries/{inquiryId}/assignee` | 담당자 지정. 항상 "나"에게 배정한다 |
+| DELETE | `/inquiries/{inquiryId}/assignee` | 담당 해제 |
+| POST | `/inquiries/{inquiryId}/notes` | 내부 메모 추가. `{body}` |
 
 문의 생성 API가 없다. 문의는 사용자 앱만 만든다.
+
+담당자와 내부 메모는 관리자 콘솔만 아는 정보다. 사용자 앱에는 어떤 형태로도
+내려가지 않는다. 목록과 상세 응답에 `assigneeEmail` 이, 상세에 `notes` 가 실린다.
+다른 사람에게 배정하는 API 는 없다 - 관리자 목록 조회가 최고관리자 전용이고,
+실무 기본 동작이 "내가 잡는다"이기 때문이다. 이미 잡힌 문의를 넘겨받는 것은
+허용하고 감사 로그에 인계로 남는다.
+
+내부 메모는 수정과 삭제가 없다. 처리 맥락의 기록이라 고칠 수 있으면
+"그때 뭐라고 적혀 있었나"를 믿을 수 없게 된다.
+
+## 9-1. 답변 템플릿 `/reply-templates`
+
+| 메서드 | 경로 | 설명 |
+| --- | --- | --- |
+| GET | `/reply-templates` | 목록. 최근에 손댄 순서 |
+| POST | `/reply-templates` | 생성. `{title, body}` |
+| PATCH | `/reply-templates/{templateId}` | 수정 |
+| DELETE | `/reply-templates/{templateId}` | 삭제 |
+
+본문에 `{보호자}`, `{문의제목}` 자리표시자를 쓸 수 있다. 치환은 콘솔 화면이
+문의 정보를 알고 있을 때 한다 - 서버는 원문 그대로 저장한다. 팀이 공유하는
+자산이라 만든 사람만 고칠 수 있는 제한은 없고, 대신 만들고 고치고 지우는 것이
+감사 로그에 남는다.
 
 답변 등록 한 번에 세 가지가 한 트랜잭션에서 일어난다 - 답변 저장, 문의 상태
 변경, 사용자 알림 생성. 커밋된 뒤 푸시가 비동기로 나간다.
