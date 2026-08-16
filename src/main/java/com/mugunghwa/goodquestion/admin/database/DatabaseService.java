@@ -63,13 +63,19 @@ public class DatabaseService {
 
     private static final String TARGET_TYPE = "DATABASE";
 
-    /** psql 이 보여주는 긴 타입 이름을 개발자가 쓰는 짧은 이름으로 바꾼다. */
-    private static final Map<String, String> TYPE_ALIASES = Map.of(
-            "character varying", "varchar",
-            "timestamp with time zone", "timestamptz",
-            "timestamp without time zone", "timestamp",
-            "double precision", "float8",
-            "character", "char");
+    /**
+     * psql 이 보여주는 긴 타입 이름을 개발자가 쓰는 짧은 이름으로 바꾼다.
+     *
+     * <p><b>긴 이름을 먼저 둔다.</b> "character varying" 은 "character" 로도 시작하므로,
+     * 짧은 쪽을 먼저 맞춰 보면 "char varying(50)" 이라는 없는 타입이 나온다.
+     * 순서가 정해지지 않은 Map 을 쓰면 실행할 때마다 결과가 달라진다.
+     */
+    private static final List<Map.Entry<String, String>> TYPE_ALIASES = List.of(
+            Map.entry("character varying", "varchar"),
+            Map.entry("timestamp with time zone", "timestamptz"),
+            Map.entry("timestamp without time zone", "timestamp"),
+            Map.entry("double precision", "float8"),
+            Map.entry("character", "char"));
 
     private final JdbcTemplate jdbcTemplate;
     private final AuditLogger auditLogger;
@@ -351,7 +357,7 @@ public class DatabaseService {
     }
 
     private String shortenType(String type) {
-        for (Map.Entry<String, String> alias : TYPE_ALIASES.entrySet()) {
+        for (Map.Entry<String, String> alias : TYPE_ALIASES) {
             if (type.startsWith(alias.getKey())) {
                 return alias.getValue() + type.substring(alias.getKey().length());
             }
