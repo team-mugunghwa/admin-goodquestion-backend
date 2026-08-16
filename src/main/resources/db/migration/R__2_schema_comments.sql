@@ -80,6 +80,23 @@ begin
 ('admin_inquiry_assignees', 'admin_email', '담당 관리자 이메일'),
 ('admin_inquiry_assignees', 'assigned_at', '담당을 잡은 시각'),
 
+('admin_notice_schedules', null, '공지 예약 공개. 시각이 되면 관리자 백엔드의 스케줄러가 공개로 바꾸고 행을 지운다.'),
+('admin_notice_schedules', 'notice_id', '예약이 걸린 공지. 공지 하나에 예약 하나다'),
+('admin_notice_schedules', 'publish_at', '공개할 시각'),
+('admin_notice_schedules', 'created_by_email', '예약을 건 관리자. 실행 시 감사 로그에 이 이름으로 남는다'),
+('admin_notice_schedules', 'created_at', '예약을 건 시각'),
+
+('admin_notice_revisions', null, '공지 수정 이력. 저장할 때마다 바꾸기 전 내용을 남겨 되돌릴 수 있게 한다. 공지당 최신 20개를 유지한다.'),
+('admin_notice_revisions', 'id', '이력 식별자'),
+('admin_notice_revisions', 'seq', '저장 순서. created_at 은 한 트랜잭션 안에서 같은 값이라 정렬은 이 값을 쓴다'),
+('admin_notice_revisions', 'notice_id', '어느 공지의 이력인지'),
+('admin_notice_revisions', 'title', '그 시점의 제목'),
+('admin_notice_revisions', 'content', '그 시점의 본문'),
+('admin_notice_revisions', 'category', '그 시점의 분류'),
+('admin_notice_revisions', 'pinned', '그 시점의 상단 고정 여부'),
+('admin_notice_revisions', 'edited_by_email', '이 내용을 마지막으로 만졌던 관리자'),
+('admin_notice_revisions', 'created_at', '이력이 만들어진 시각'),
+
 -- ------------------------------------------------------------
 -- 사용자 (보호자와 아이)
 -- ------------------------------------------------------------
