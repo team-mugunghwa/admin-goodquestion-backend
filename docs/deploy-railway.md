@@ -60,9 +60,13 @@ SERVICE_BASE_URL=https://goodquestion-frontend.vercel.app
 `DB_URL` 은 `jdbc:` 로 시작해야 한다. Postgres 서비스가 주는 `DATABASE_URL` 은
 `postgresql://` 스킴이라 Spring이 읽지 못한다.
 
-`${{ Postgres.PGHOST }}` 참조는 **같은 프로젝트 안에** 그 서비스가 있어야 값으로
-바뀐다. 새 프로젝트에 만들었다면 참조가 그대로 문자열로 남고, 그 상태도 기동
-시점에 걸러서 알려 준다. Variables 탭에서 값이 실제로 치환돼 보이는지 확인한다.
+`${{ Postgres.PGHOST }}` 의 `Postgres` 는 **그 프로젝트에 있는 서비스 이름과 정확히
+같아야 한다.** 이름이 다르면 Railway는 오류를 내지 않고 **조용히 빈 값으로 바꾼다.**
+그러면 `DB_URL` 이 `jdbc:postgresql://:/` 가 되고, 드라이버는 "claims to not accept
+jdbcUrl" 이라고만 말해서 원인이 보이지 않는다. 기동 시점 검사가 이 경우를 잡아
+어디가 비었는지 알려 준다.
+
+Variables 탭에서 값이 실제 호스트명으로 치환돼 보이는지 눈으로 확인하는 것이 가장 빠르다.
 
 **`ADMIN_JWT_SECRET` 은 서비스 백엔드의 `JWT_SECRET` 과 반드시 다른 값을 쓴다.**
 같으면 보호자 앱이 받은 토큰의 서명이 관리자 API에서도 통과한다.
@@ -146,6 +150,7 @@ Logs에 한글 안내를 남기고 종료한다(`RequiredEnvironmentListener`). 
 | `DB_URL 이 비어 있습니다` | 변수를 넣지 않았다 |
 | `DB_URL 이 jdbc: 로 시작하지 않습니다` | `DATABASE_URL` 을 그대로 붙여 넣었다 |
 | `DB_URL 의 Railway 변수 참조가 풀리지 않았습니다` | 다른 프로젝트에 서비스를 만들었다 |
+| `DB_URL 에 호스트(PGHOST) ... 이(가) 비어 있습니다` | 참조가 빈 값으로 바뀌었다. Postgres 서비스 이름이 다르다 |
 | `ADMIN_JWT_SECRET 이 비어 있습니다` | 서명 키를 넣지 않았다 |
 | `ADMIN_JWT_SECRET 이 너무 짧습니다` | HS256은 32바이트 이상이 필요하다 |
 
