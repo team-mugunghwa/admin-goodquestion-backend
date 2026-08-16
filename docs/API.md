@@ -160,3 +160,33 @@
 | GET | `/audit-logs` | 목록. `targetType` 으로 거를 수 있다 |
 
 쓰기 API가 없다. 기록은 각 서비스가 조작할 때 남긴다.
+
+## 11. 데이터베이스 `/database`
+
+| 메서드 | 경로 | 설명 |
+| --- | --- | --- |
+| GET | `/database/tables` | 테이블 목록. 분류/설명/컬럼 수/대략적인 행 수 |
+| GET | `/database/tables/{tableName}` | 구조. 컬럼, 타입, 기본키, 외래키, 인덱스 |
+| GET | `/database/tables/{tableName}/rows` | 값. `page`, `size`, `sortColumn`, `sortDirection`, `filterColumn`, `keyword` |
+
+**읽기 전용이다.** 쓰기 API를 두지 않았다. 관리자 콘솔은 사용자 서비스와 같은
+운영 DB를 보므로, 여기서 값을 고칠 수 있게 되면 서비스 규칙을 건너뛴 데이터가
+들어간다. 값을 바꿔야 하면 그 도메인의 관리 API를 쓴다.
+
+컬럼과 테이블의 설명은 DB에 심어 둔 주석(`comment on table/column`)을 그대로
+읽어 온다. 주석은 `R__2_schema_comments.sql` 이 관리하며, 반복 마이그레이션이라
+파일을 고치면 다음 기동에 다시 적용된다. **새 컬럼을 만들면 이 파일에 설명을
+같이 적는다.**
+
+### 안전장치
+
+| 항목 | 내용 |
+| --- | --- |
+| 테이블/컬럼 이름 | `information_schema` 에 실제로 있는 이름만 통과시킨다. 정렬/검색 컬럼도 같다 |
+| 값 가리기 | `password_hash`, `token_hash`, `token`, `idempotency_key` 는 `(가려짐)` 으로 내려간다 |
+| 조회 시간 | 5초를 넘기면 끊는다 |
+| 페이지 크기 | 최대 200 |
+| 감사 로그 | 개인정보가 든 테이블의 값을 열면 `READ_DATA` 로 남는다 |
+
+조회를 감사 로그에 남기는 것은 이 API 하나뿐이다. 다른 화면의 조회는 남기지
+않는다 - 여기서는 아이 발화 원문처럼 무게가 다른 값을 원본 그대로 보기 때문이다.
