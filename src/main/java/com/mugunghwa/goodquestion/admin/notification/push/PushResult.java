@@ -8,7 +8,7 @@ package com.mugunghwa.goodquestion.admin.notification.push;
  */
 public enum PushResult {
     SENT,
-    /** 벤더가 "등록되지 않은 토큰"이라고 답한 경우. 앱 삭제·재설치가 대부분이다. 그 토큰을 비활성으로 바꾼다. */
+    /** 벤더가 "등록되지 않은 토큰"이라고 답한 경우. 앱 삭제/재설치가 대부분이다. 그 토큰을 비활성으로 바꾼다. */
     TOKEN_INVALID,
     /** 벤더 장애, 타임아웃, 쿼터 초과. 토큰은 멀쩡하므로 건드리지 않는다. */
     FAILED

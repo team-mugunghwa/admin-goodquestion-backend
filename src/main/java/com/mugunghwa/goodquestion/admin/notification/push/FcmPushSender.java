@@ -65,7 +65,7 @@ public class FcmPushSender implements PushSender {
      */
     private PushResult handleVendorError(String deviceToken, WebClientResponseException e) {
         int status = e.getStatusCode().value();
-        // 404 NOT_FOUND(UNREGISTERED)는 앱 삭제·재설치로 토큰이 죽은 경우다.
+        // 404 NOT_FOUND(UNREGISTERED)는 앱 삭제/재설치로 토큰이 죽은 경우다.
         // 400 INVALID_ARGUMENT는 토큰 형식 자체가 틀린 경우로, 다시 보내도 결과가 같다.
         if (status == 404 || status == 400) {
             log.info("FCM이 토큰을 거절해 비활성 처리한다. status={} token={}...",

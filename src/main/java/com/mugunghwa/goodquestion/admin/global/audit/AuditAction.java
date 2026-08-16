@@ -14,11 +14,11 @@ public enum AuditAction {
     DELETE,
     /** 공개/비공개 전환처럼 노출 상태만 바꾼 경우. CREATE/UPDATE와 구분해야 "언제 내렸는가"를 찾을 수 있다. */
     PUBLISH,
-    /** 사용자 정지·해제, 로그인 세션 강제 종료 */
+    /** 사용자 정지/해제, 로그인 세션 강제 종료 */
     SUSPEND,
     RESTORE,
     REVOKE_SESSION,
-    /** 문의 답변 등록·수정 */
+    /** 문의 답변 등록/수정 */
     ANSWER,
     /** 사용자에게 알림/푸시를 보낸 경우 */
     NOTIFY
