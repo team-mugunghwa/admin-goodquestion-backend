@@ -52,7 +52,7 @@ public class AdminJwtProvider {
         return expirationMs / 1000;
     }
 
-    /** @return 검증된 관리자 정보 — 실패 시 JwtException */
+    /** @return 검증된 관리자 정보 - 실패 시 JwtException */
     public AdminPrincipal verify(String token) {
         Claims claims = Jwts.parser().verifyWith(key).build()
                 .parseSignedClaims(token).getPayload();

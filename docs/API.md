@@ -23,7 +23,7 @@
 
 | code | 상태 | 뜻 |
 | --- | --- | --- |
-| `UNAUTHORIZED` | 401 | 토큰 없음·만료 |
+| `UNAUTHORIZED` | 401 | 토큰 없음/만료 |
 | `FORBIDDEN` | 403 | 권한 부족 |
 | `NOT_FOUND` | 404 | 리소스 없음 |
 | `INVALID_REQUEST` | 400 | 입력 검증 실패 |
@@ -42,22 +42,22 @@
 
 | 메서드 | 경로 | 설명 |
 | --- | --- | --- |
-| POST | `/auth/login` | 로그인. `{email, password}` → 토큰과 관리자 정보 |
+| POST | `/auth/login` | 로그인. `{email, password}` -> 토큰과 관리자 정보 |
 | POST | `/auth/refresh` | 재발급. 쓴 토큰은 폐기되고 새 값이 나간다(회전) |
 | POST | `/auth/logout` | 본문에 토큰을 실으면 그 기기만, 비우면 모든 기기 |
 | GET | `/auth/me` | 현재 관리자 |
 | PATCH | `/auth/password` | 비밀번호 변경. 성공하면 이 계정의 모든 리프레시 토큰이 끊긴다 |
 
-## 2. 관리자 계정 `/accounts` — 최고관리자 전용
+## 2. 관리자 계정 `/accounts` - 최고관리자 전용
 
 | 메서드 | 경로 | 설명 |
 | --- | --- | --- |
 | GET | `/accounts` | 목록 |
 | POST | `/accounts` | 생성 |
-| PATCH | `/accounts/{adminId}` | 이름·권한·상태 변경 |
+| PATCH | `/accounts/{adminId}` | 이름/권한/상태 변경 |
 | DELETE | `/accounts/{adminId}` | 삭제 |
 
-자기 계정의 권한·상태 변경과 삭제는 `SELF_MODIFICATION_DENIED` 로 막는다.
+자기 계정의 권한/상태 변경과 삭제는 `SELF_MODIFICATION_DENIED` 로 막는다.
 마지막 최고관리자가 사라지면 DB를 직접 고치는 것 말고는 되돌릴 방법이 없다.
 
 ## 3. 대시보드 `/dashboard`
@@ -66,8 +66,8 @@
 | --- | --- | --- |
 | GET | `/dashboard` | 화면 전체를 한 번에 |
 
-`users`(총 사용자·오늘 방문자·신규 가입·진행 중 세션), `content`(이야기·공지·
-이용안내·미답변 문의), `visitTrend`(최근 2주, 방문 없는 날도 0으로 채움),
+`users`(총 사용자/오늘 방문자/신규 가입/진행 중 세션), `content`(이야기/공지/
+이용안내/미답변 문의), `visitTrend`(최근 2주, 방문 없는 날도 0으로 채움),
 `recentActivities`(최근 관리자 조작 10건).
 
 "오늘"은 한국 시간 기준이다.
@@ -81,14 +81,14 @@
 | POST | `/stories` | 생성 |
 | PATCH | `/stories/{storyId}` | 수정. `topics` 는 null이면 유지, 빈 배열이면 전부 삭제 |
 | DELETE | `/stories/{storyId}` | 삭제. 진행 기록이 있으면 `STORY_IN_USE` |
-| GET/POST | `/stories/{storyId}/scenes` | 장면 목록·추가 |
-| PATCH/DELETE | `/stories/{storyId}/scenes/{sceneId}` | 장면 수정·삭제 |
+| GET/POST | `/stories/{storyId}/scenes` | 장면 목록/추가 |
+| PATCH/DELETE | `/stories/{storyId}/scenes/{sceneId}` | 장면 수정/삭제 |
 | PUT | `/stories/{storyId}/scenes/order` | 순서 일괄 변경. 배열의 위치가 곧 순서 |
-| GET/POST | `/stories/{storyId}/characters` | 캐릭터 목록·추가 |
-| PATCH/DELETE | `/stories/{storyId}/characters/{characterId}` | 캐릭터 수정·삭제 |
+| GET/POST | `/stories/{storyId}/characters` | 캐릭터 목록/추가 |
+| PATCH/DELETE | `/stories/{storyId}/characters/{characterId}` | 캐릭터 수정/삭제 |
 
 - 장면이 0개인 이야기를 `PUBLISHED` 로 바꾸면 400
-- 대화 장면은 캐릭터·첫 대사·장면 목표·확인 요소·턴 수가 모두 필요하다
+- 대화 장면은 캐릭터/첫 대사/장면 목표/확인 요소/턴 수가 모두 필요하다
 - 장면을 쓰는 캐릭터는 삭제되지 않는다
 
 ## 5. 주제 `/topics`
@@ -97,7 +97,7 @@
 | --- | --- | --- |
 | GET | `/topics` | 목록 |
 | GET | `/topics/{topicId}/usage` | 이 주제를 쓰는 이야기 수 |
-| POST/PATCH/DELETE | `/topics`, `/topics/{topicId}` | 생성·수정·삭제 |
+| POST/PATCH/DELETE | `/topics`, `/topics/{topicId}` | 생성/수정/삭제 |
 
 이야기 저장에서 없는 주제 이름을 보내면 자동으로 만들어진다. 오타로 늘어난
 주제를 정리하는 곳이 이 화면이다.
@@ -107,23 +107,23 @@
 | 메서드 | 경로 | 설명 |
 | --- | --- | --- |
 | GET | `/members` | 목록. `status`, `keyword` |
-| GET | `/members/{parentId}` | 상세. 아이·로그인 세션·문의 수 |
+| GET | `/members/{parentId}` | 상세. 아이/로그인 세션/문의 수 |
 | GET | `/members/{parentId}/sessions` | 학습 세션 |
 | POST | `/members/{parentId}/suspend` | 정지. `{reason}` 필수. 로그인 세션도 함께 끊긴다 |
 | POST | `/members/{parentId}/restore` | 정지 해제. 로그인 실패 잠금도 함께 풀린다 |
 | POST | `/members/{parentId}/login-sessions/revoke` | 로그인 세션만 종료 |
 
-**생성·삭제 API가 없다.** 가입은 사용자가 하고 탈퇴는 사용자의 권리다.
+**생성/삭제 API가 없다.** 가입은 사용자가 하고 탈퇴는 사용자의 권리다.
 
 ## 7. 공지사항 `/notices`
 
 | 메서드 | 경로 | 설명 |
 | --- | --- | --- |
 | GET | `/notices` | 목록. `status`, `keyword` |
-| GET/POST | `/notices`, `/notices/{noticeId}` | 상세·작성 |
-| PATCH/DELETE | `/notices/{noticeId}` | 수정·삭제 |
+| GET/POST | `/notices`, `/notices/{noticeId}` | 상세/작성 |
+| PATCH/DELETE | `/notices/{noticeId}` | 수정/삭제 |
 
-`DRAFT` → `PUBLISHED` 로 바뀌는 순간에만 공개 시각을 찍는다. 이후 수정에는
+`DRAFT` -> `PUBLISHED` 로 바뀌는 순간에만 공개 시각을 찍는다. 이후 수정에는
 갱신하지 않는다 - 오타 수정 하나에 사용자 목록 맨 위로 올라오면 안 된다.
 
 ## 8. 이용안내 `/guides`
@@ -132,7 +132,7 @@
 | --- | --- | --- |
 | GET | `/guides` | 목록. `category`, `status`. **페이징 없음** |
 | POST | `/guides` | 생성. 순서를 비우면 해당 분류 맨 아래 |
-| PATCH/DELETE | `/guides/{guideId}` | 수정·삭제 |
+| PATCH/DELETE | `/guides/{guideId}` | 수정/삭제 |
 | PUT | `/guides/order` | 순서 일괄 변경. 분류 전체를 다시 번호 매긴다 |
 
 순서를 보며 편집하는 화면이라 페이징하지 않는다.
@@ -150,7 +150,7 @@
 
 문의 생성 API가 없다. 문의는 사용자 앱만 만든다.
 
-답변 등록 한 번에 세 가지가 한 트랜잭션에서 일어난다 — 답변 저장, 문의 상태
+답변 등록 한 번에 세 가지가 한 트랜잭션에서 일어난다 - 답변 저장, 문의 상태
 변경, 사용자 알림 생성. 커밋된 뒤 푸시가 비동기로 나간다.
 
 ## 10. 감사 로그 `/audit-logs`

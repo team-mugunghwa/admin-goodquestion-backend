@@ -46,7 +46,7 @@ public class Story {
     @Column(name = "child_role", length = 50)
     private String childRole;
 
-    /** 도입·상황 소개. 상세 화면에 표시된다. */
+    /** 도입/상황 소개. 상세 화면에 표시된다. */
     @Column(columnDefinition = "text")
     private String intro;
 

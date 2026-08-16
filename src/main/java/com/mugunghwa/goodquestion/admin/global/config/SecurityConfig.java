@@ -48,8 +48,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/auth/login", "/api/admin/auth/refresh").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(e -> e
-                        .authenticationEntryPoint(authenticationEntryPoint)   // 미인증 → 401
-                        .accessDeniedHandler(accessDeniedHandler))            // 권한 없음 → 403
+                        .authenticationEntryPoint(authenticationEntryPoint)   // 미인증 -> 401
+                        .accessDeniedHandler(accessDeniedHandler))            // 권한 없음 -> 403
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }

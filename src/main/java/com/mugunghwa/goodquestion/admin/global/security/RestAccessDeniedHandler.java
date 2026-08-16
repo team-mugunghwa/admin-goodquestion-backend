@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
-/** 인증은 됐지만 권한이 모자란 요청 → 403 + 오류 본문. */
+/** 인증은 됐지만 권한이 모자란 요청 -> 403 + 오류 본문. */
 @Component
 @RequiredArgsConstructor
 public class RestAccessDeniedHandler implements AccessDeniedHandler {

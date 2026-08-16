@@ -13,15 +13,15 @@
 PostgreSQL을 본다.**
 
 ```
-              ┌──────────────────────────┐
-              │  PostgreSQL (한 개)       │
-              └──────────────────────────┘
+              +--------------------------+
+              |  PostgreSQL (한 개)       |
+              +--------------------------+
                   ▲                   ▲
-                  │                   │
+                  |                   |
    goodquestion-backend        admin-goodquestion-backend
         :8080                          :8081
           ▲                              ▲
-          │                              │
+          |                              |
    goodquestion-frontend        admin-goodquestion-frontend
      (Flutter, 사용자)             (Flutter Web, 운영자)
 ```
@@ -85,7 +85,7 @@ Docker만 떠 있으면 된다. Testcontainers가 `postgres:17`을 띄우고 빈
 
 ---
 
-## 3. DB 마이그레이션 — 가장 먼저 이해할 것
+## 3. DB 마이그레이션 - 가장 먼저 이해할 것
 
 **두 애플리케이션이 한 DB를 공유하지만 Flyway 이력 테이블은 따로 쓴다.**
 
@@ -129,16 +129,16 @@ Docker만 떠 있으면 된다. Testcontainers가 `postgres:17`을 띄우고 빈
 
 ```
 com.mugunghwa.goodquestion.admin
-├── global        공유 커널. 보안/오류/설정/감사 로그. 도메인을 모른다
-├── auth          관리자 계정과 로그인
-├── dashboard     조립 계층. 여러 도메인 집계를 합쳐 한 번에 내린다
-├── story         이야기·장면·캐릭터·주제
-├── member        보호자·아이·학습 세션·로그인 세션
-├── notice        공지사항
-├── guide         이용안내
-├── support       고객센터 문의와 답변
-├── notification  알림함과 푸시 발송
-└── content       공지/이용안내가 공유하는 노출 상태 enum
++-- global        공유 커널. 보안/오류/설정/감사 로그. 도메인을 모른다
++-- auth          관리자 계정과 로그인
++-- dashboard     조립 계층. 여러 도메인 집계를 합쳐 한 번에 내린다
++-- story         이야기/장면/캐릭터/주제
++-- member        보호자/아이/학습 세션/로그인 세션
++-- notice        공지사항
++-- guide         이용안내
++-- support       고객센터 문의와 답변
++-- notification  알림함과 푸시 발송
++-- content       공지/이용안내가 공유하는 노출 상태 enum
 ```
 
 **서비스 백엔드와 엔티티를 공유하지 않는다.** 같은 테이블을 각자 매핑한다.
@@ -198,7 +198,7 @@ com.mugunghwa.goodquestion.admin
 
 ### 발송 시점
 
-답변 저장 → 문의 상태 변경 → 알림 생성까지가 한 트랜잭션이고, **커밋된 뒤에**
+답변 저장 -> 문의 상태 변경 -> 알림 생성까지가 한 트랜잭션이고, **커밋된 뒤에**
 푸시가 비동기로 나간다. 트랜잭션 안에서 보내면 뒤에서 롤백이 나도 푸시는 되돌릴
 수 없어, 사용자는 알림을 받고 들어왔는데 아무것도 없는 상태를 보게 된다.
 
