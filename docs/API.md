@@ -27,6 +27,7 @@
 | `FORBIDDEN` | 403 | 권한 부족 |
 | `NOT_FOUND` | 404 | 리소스 없음 |
 | `INVALID_REQUEST` | 400 | 입력 검증 실패 |
+| `NOT_FOUND` | 404 | 없는 경로이거나 없는 리소스 |
 | `INVALID_CREDENTIALS` | 401 | 이메일/비밀번호 불일치 |
 | `ACCOUNT_LOCKED` | 423 | 로그인 실패 누적으로 잠김 |
 | `ACCOUNT_SUSPENDED` | 403 | 정지된 관리자 계정 |
