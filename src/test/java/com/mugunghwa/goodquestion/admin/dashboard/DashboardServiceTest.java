@@ -60,6 +60,49 @@ class DashboardServiceTest {
         assertThat(summary.content().publishedGuides()).isPositive();
     }
 
+    /**
+     * 이 순서가 뒤집히면 대시보드가 급한 문의를 아래로 밀어낸다. 오래 기다린 사람이
+     * 맨 위에 있어야 위에서부터 처리하는 것이 맞는 순서가 된다.
+     */
+    @Test
+    @DisplayName("답변 대기 문의는 오래 기다린 순으로 내려온다")
+    void waitingInquiriesOldestFirst() {
+        UUID parentId = fixture.createParent("문의한보호자");
+        insertInquiry(parentId, "사흘 전에 넣은 문의", 3);
+        insertInquiry(parentId, "한 시간 전에 넣은 문의", 0);
+
+        DashboardSummary summary = dashboardService.summary();
+
+        assertThat(summary.waitingInquiries()).isNotEmpty();
+        assertThat(summary.waitingInquiries().getFirst().title())
+                .isEqualTo("사흘 전에 넣은 문의");
+    }
+
+    @Test
+    @DisplayName("답변 대기 문의는 5건까지만 내린다")
+    void waitingInquiriesAreCapped() {
+        UUID parentId = fixture.createParent("문의많은보호자");
+        for (int i = 0; i < 7; i++) {
+            insertInquiry(parentId, "문의 %d".formatted(i), i);
+        }
+
+        DashboardSummary summary = dashboardService.summary();
+
+        assertThat(summary.waitingInquiries()).hasSizeLessThanOrEqualTo(5);
+    }
+
+    /** 답변 대기 상태로 넣는다. created_at은 DB 기본값이라 넣은 뒤 따로 당긴다. */
+    private void insertInquiry(UUID parentId, String title, int daysAgo) {
+        UUID id = UUID.randomUUID();
+        jdbcTemplate.update("""
+                insert into inquiries (id, parent_id, category, title, content, status)
+                values (?, ?, 'ETC', ?, '내용', 'PENDING')
+                """, id, parentId, title);
+        jdbcTemplate.update(
+                "update inquiries set created_at = now() - make_interval(days => ?) where id = ?",
+                daysAgo, id);
+    }
+
     private void insertVisit(UUID parentId, LocalDate date, int count) {
         jdbcTemplate.update("""
                 insert into daily_visits (parent_id, visit_date, visit_count)
