@@ -63,7 +63,7 @@ public class MemberService {
                 parent.getId(), parent.getName(), parent.getEmail(), parent.getProvider(),
                 parent.getStatus(), parent.isLocked(),
                 childCounts.getOrDefault(parent.getId(), 0L).intValue(),
-                parent.getCreatedAt()));
+                parent.getLastLoginAt(), parent.getCreatedAt()));
     }
 
     public MemberDetail get(UUID parentId) {
@@ -77,7 +77,8 @@ public class MemberService {
         return new MemberDetail(parent.getId(), parent.getName(), parent.getEmail(),
                 parent.getProvider(), parent.getStatus(), parent.isLocked(),
                 parent.getLockedUntil(), parent.getSuspendedReason(), parent.getSuspendedAt(),
-                parent.getLastLoginIp(), parent.getCreatedAt(), children, sessions,
+                parent.getLastLoginAt(), parent.getLastLoginIp(), parent.getCreatedAt(),
+                children, sessions,
                 inquiryRepository.findAllByParentIdOrderByCreatedAtDesc(parentId,
                         PageRequest.of(0, 1)).getTotalElements());
     }

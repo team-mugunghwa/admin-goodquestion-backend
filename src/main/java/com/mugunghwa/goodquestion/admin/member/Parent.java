@@ -56,6 +56,16 @@ public class Parent {
     @Column(name = "locked_until")
     private OffsetDateTime lockedUntil;
 
+    /**
+     * 마지막 접속 시각. 서비스 백엔드가 로그인과 리프레시 토큰 재발급에서 채운다.
+     *
+     * <p>이 컬럼이 생기기 전부터 있던 계정은 비어 있다. 가입 시각으로 대신 채우지 않았다 -
+     * 마지막 접속을 모르는 것과 가입 후 한 번도 안 온 것은 다른 이야기다.
+     */
+    @Column(name = "last_login_at")
+    private OffsetDateTime lastLoginAt;
+
+    /** 마지막으로 로그인한 위치. 재발급으로 들어온 경우는 갱신되지 않는다. */
     @Column(name = "last_login_ip", length = 45)
     private String lastLoginIp;
 

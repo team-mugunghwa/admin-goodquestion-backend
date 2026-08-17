@@ -107,14 +107,18 @@
 
 | 메서드 | 경로 | 설명 |
 | --- | --- | --- |
-| GET | `/members` | 목록. `status`, `keyword` |
-| GET | `/members/{parentId}` | 상세. 아이/로그인 세션/문의 수 |
+| GET | `/members` | 목록. `status`, `keyword`. `lastLoginAt` 포함 |
+| GET | `/members/{parentId}` | 상세. 아이/로그인 세션/문의 수, `lastLoginAt`/`lastLoginIp` |
 | GET | `/members/{parentId}/sessions` | 학습 세션 |
 | POST | `/members/{parentId}/suspend` | 정지. `{reason}` 필수. 로그인 세션도 함께 끊긴다 |
 | POST | `/members/{parentId}/restore` | 정지 해제. 로그인 실패 잠금도 함께 풀린다 |
 | POST | `/members/{parentId}/login-sessions/revoke` | 로그인 세션만 종료 |
 
 **생성/삭제 API가 없다.** 가입은 사용자가 하고 탈퇴는 사용자의 권리다.
+
+`lastLoginAt`은 서비스 백엔드가 로그인과 리프레시 토큰 재발급에서 채운다. 콘솔은 읽기만
+한다. 컬럼이 생기기 전부터 있던 계정은 비어 있다. `lastLoginIp`는 재발급으로 갱신되지
+않으므로 둘의 시점이 어긋날 수 있다 - IP는 마지막으로 자격 증명을 확인한 때의 값이다.
 
 ## 7. 공지사항 `/notices`
 

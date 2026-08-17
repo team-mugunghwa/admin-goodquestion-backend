@@ -18,7 +18,8 @@ public final class MemberDtos {
     /**
      * 목록 한 줄.
      *
-     * @param childCount 등록한 아이 수. 0이면 가입만 하고 쓰지 않는 계정이다.
+     * @param childCount  등록한 아이 수. 0이면 가입만 하고 쓰지 않는 계정이다.
+     * @param lastLoginAt 마지막 접속 시각. 한 번도 접속 기록이 없으면 null이다.
      */
     public record MemberSummary(
             UUID id,
@@ -28,6 +29,7 @@ public final class MemberDtos {
             ParentStatus status,
             boolean locked,
             int childCount,
+            OffsetDateTime lastLoginAt,
             OffsetDateTime createdAt
     ) {
     }
@@ -71,6 +73,12 @@ public final class MemberDtos {
     ) {
     }
 
+    /**
+     * 상세 한 건.
+     *
+     * @param lastLoginAt 마지막 접속 시각. 로그인과 재발급이 모두 갱신한다
+     * @param lastLoginIp 마지막 로그인 위치. 재발급으로는 바뀌지 않아 시각과 어긋날 수 있다
+     */
     public record MemberDetail(
             UUID id,
             String name,
@@ -81,6 +89,7 @@ public final class MemberDtos {
             OffsetDateTime lockedUntil,
             String suspendedReason,
             OffsetDateTime suspendedAt,
+            OffsetDateTime lastLoginAt,
             String lastLoginIp,
             OffsetDateTime createdAt,
             List<ChildResponse> children,
