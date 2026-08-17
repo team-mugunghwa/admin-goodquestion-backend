@@ -87,4 +87,30 @@ class MemberServiceTest {
         assertThat(page.content()).isEmpty();
         assertThat(page.totalElements()).isZero();
     }
+
+    /** 값을 채우는 것은 서비스 백엔드다. 관리자 쪽에 쓰기 경로가 없어 직접 넣는다. */
+    @Test
+    @DisplayName("마지막 접속 시각이 목록과 상세에 함께 실린다")
+    void lastLoginAtIsExposed() {
+        jdbcTemplate.update("update parents set last_login_at = now() where id = ?", parentId);
+
+        var summary = memberService.list(null, "김보호자", 0, 20).content().getFirst();
+        MemberDetail detail = memberService.get(parentId);
+
+        assertThat(summary.lastLoginAt()).isNotNull();
+        assertThat(detail.lastLoginAt()).isNotNull();
+    }
+
+    /**
+     * 접속한 적 없는 계정은 비어 있어야 한다. 가입 시각으로 대신 채우면
+     * "한 번도 안 온 사람"이 목록에서 방금 다녀간 사람처럼 보인다.
+     */
+    @Test
+    @DisplayName("접속 기록이 없으면 마지막 접속 시각은 비어 있다")
+    void lastLoginAtIsNullWithoutLogin() {
+        MemberDetail detail = memberService.get(parentId);
+
+        assertThat(detail.lastLoginAt()).isNull();
+        assertThat(detail.createdAt()).isNotNull();
+    }
 }
