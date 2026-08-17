@@ -6,6 +6,7 @@ import com.mugunghwa.goodquestion.admin.dashboard.dto.DashboardDtos.DashboardSum
 import com.mugunghwa.goodquestion.admin.dashboard.dto.DashboardDtos.DailyPoint;
 import com.mugunghwa.goodquestion.admin.dashboard.dto.DashboardDtos.RecentActivity;
 import com.mugunghwa.goodquestion.admin.dashboard.dto.DashboardDtos.UserStats;
+import com.mugunghwa.goodquestion.admin.dashboard.dto.DashboardDtos.WaitingInquiry;
 import com.mugunghwa.goodquestion.admin.global.audit.AuditLogRepository;
 import com.mugunghwa.goodquestion.admin.guide.GuideRepository;
 import com.mugunghwa.goodquestion.admin.member.ChildRepository;
@@ -75,7 +76,25 @@ public class DashboardService {
                 guideRepository.countByStatus(ContentStatus.PUBLISHED),
                 inquiryRepository.countByStatus(InquiryStatus.PENDING));
 
-        return new DashboardSummary(users, content, visitTrend(today), recentActivities());
+        return new DashboardSummary(users, content, visitTrend(today), waitingInquiries(),
+                recentActivities());
+    }
+
+    /**
+     * 답변을 기다리는 문의 5건.
+     *
+     * <p>미답변 건수만으로는 급한 것이 있는지 알 수 없다. 3일 기다린 문의와 방금 들어온
+     * 문의가 같은 숫자에 섞여 있어서, 지금까지는 문의 목록을 따로 열어야 알 수 있었다.
+     *
+     * <p>정렬은 리포지터리가 이미 PENDING을 오래된 순으로 준다. 맨 위가 가장 오래
+     * 기다린 사람이라 그대로 위에서부터 처리하면 된다.
+     */
+    private List<WaitingInquiry> waitingInquiries() {
+        return inquiryRepository.search(InquiryStatus.PENDING, null, "", PageRequest.of(0, 5))
+                .getContent().stream()
+                .map(inquiry -> new WaitingInquiry(inquiry.getId(), inquiry.getTitle(),
+                        inquiry.getCategory(), inquiry.getCreatedAt()))
+                .toList();
     }
 
     /**
